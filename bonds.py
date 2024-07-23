@@ -134,7 +134,7 @@ def update_price(coupons, accrual_starts, maturities, frequencies, currencies):
         # Create FixedBond with positional arguments
         bond = FixedBond(currency, coupon, accrual_start, maturity, frequency)
         timetable = bond.timetable()
-
+        print(timetable["events"].to_pandas())
         # Setup the discount data and dataset for pricing
         discount_data = ("ZERO_RATES", np.array([[0.0, 0.04], [5.0, 0.04]]))
         dataset = {
