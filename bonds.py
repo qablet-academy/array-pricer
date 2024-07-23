@@ -1,9 +1,9 @@
 import dash
 from dash import dcc, html
 from dash.dependencies import Input, Output, State
-from datetime import datetime, date
+from datetime import datetime
 from qablet_contracts.bnd.fixed import FixedBond
-from qablet_contracts.timetable import TS_EVENT_SCHEMA, py_to_ts
+from qablet_contracts.timetable import py_to_ts
 from qablet.base.fixed import FixedModel
 import numpy as np
 
@@ -94,7 +94,6 @@ def add_bond(n_clicks, rows):
     return rows
 
 # Callback to calculate bond price
-
 @app.callback(
     Output({'type': 'price-output', 'index': dash.ALL}, 'children'),
     [Input({'type': 'coupon-input', 'index': dash.ALL}, 'value'),
@@ -110,59 +109,47 @@ def update_price(coupons, accrual_starts, maturities, frequencies, currencies):
     max_len = max(len(coupons), len(accrual_starts), len(maturities), len(frequencies), len(currencies))
 
     for i in range(max_len):
+        # Get values or default to None if index is out of range
+        coupon = coupons[i] if i < len(coupons) else None
+        accrual_start = accrual_starts[i] if i < len(accrual_starts) else None
+        maturity = maturities[i] if i < len(maturities) else None
+        frequency = frequencies[i] if i < len(frequencies) else None
+        currency = currencies[i] if i < len(currencies) else None
+
+        # Validate inputs
+        if None in [coupon, accrual_start, maturity, frequency, currency]:
+            prices.append("Missing Input")
+            continue
+
+        # Convert and validate inputs
         try:
-            # Get values or default to None if index is out of range
-            coupon = coupons[i] if i < len(coupons) else None
-            accrual_start = accrual_starts[i] if i < len(accrual_starts) else None
-            maturity = maturities[i] if i < len(maturities) else None
-            frequency = frequencies[i] if i < len(frequencies) else None
-            currency = currencies[i] if i < len(currencies) else None
+            coupon = float(coupon) / 100
+            accrual_start = datetime.strptime(accrual_start, '%Y-%m-%d')
+            maturity = datetime.strptime(maturity, '%Y-%m-%d')
+            frequency = f"{frequency}QE"
+        except (ValueError, TypeError):
+            prices.append("Invalid Input")
+            continue
 
-            # Skip processing if any value is missing
-            if None in [coupon, accrual_start, maturity, frequency, currency]:
-                prices.append("Missing Input")
-                continue
+        # Create FixedBond with positional arguments
+        bond = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+        timetable = bond.timetable()
 
-            # Convert and validate inputs
-            try:
-                coupon = float(coupon) / 100
-                accrual_start = datetime.strptime(accrual_start, '%Y-%m-%d')
-                maturity = datetime.strptime(maturity, '%Y-%m-%d')
-                # Ensure frequency includes the "QE" suffix
-                
-                frequency = f"{frequency}QE"
-            except (ValueError, TypeError) as e:
-                print(f"Error converting values for bond {i}: {e}")
-                prices.append("Invalid Input")
-                continue
+        # Setup the discount data and dataset for pricing
+        discount_data = ("ZERO_RATES", np.array([[0.0, 0.04], [5.0, 0.04]]))
+        dataset = {
+            "BASE": "USD",
+            "PRICING_TS": py_to_ts(datetime(2023, 12, 31)).value,
+            "ASSETS": {"USD": discount_data},
+        }
 
-            # Create FixedBond with positional arguments
-            bond = FixedBond(currency, coupon, accrual_start, maturity, frequency)
-            timetable = bond.timetable()
+        # Price the bond using FixedModel
+        model = FixedModel()
+        price, _ = model.price(timetable, dataset)
 
-            # Setup the discount data and dataset for pricing
-            discount_data = ("ZERO_RATES", np.array([[0.0, 0.04], [5.0, 0.04]]))
-            dataset = {
-                "BASE": "USD",
-                "PRICING_TS": py_to_ts(datetime(2023, 12, 31)).value,  
-                "ASSETS": {"USD": discount_data},
-            }
-
-            # Price the bond using FixedModel
-            model = FixedModel()
-            price, _ = model.price(timetable, dataset)
-
-            prices.append(f"${price:.6f}")
-        except Exception as e:
-            print(f"Error calculating price for bond {i}: {e}")
-            prices.append("Error")
+        prices.append(f"${price:.6f}")
 
     return prices
-
-
-
-
-
 
 if __name__ == '__main__':
     app.run_server(debug=True)
