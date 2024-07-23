@@ -5,3 +5,8 @@ scipy
 matplotlib
 qablet_contracts==0.3.0
 qablet-basic==0.4.0
+dash
+dash_bootstrap_components
+dash_bootstrap_templates
+dash_daq
+ruff

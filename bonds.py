@@ -3,6 +3,7 @@ from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from datetime import datetime, date
 from qablet_contracts.bnd.fixed import FixedBond
+from qablet_contracts.timetable import TS_EVENT_SCHEMA, py_to_ts
 from qablet.base.fixed import FixedModel
 import numpy as np
 
@@ -93,7 +94,6 @@ def add_bond(n_clicks, rows):
     return rows
 
 # Callback to calculate bond price
-from datetime import datetime
 
 @app.callback(
     Output({'type': 'price-output', 'index': dash.ALL}, 'children'),
@@ -126,33 +126,40 @@ def update_price(coupons, accrual_starts, maturities, frequencies, currencies):
             # Convert and validate inputs
             try:
                 coupon = float(coupon) / 100
-                #accrual_start = datetime.strptime(accrual_start, '%Y-%m-%d').date()
-                #maturity = datetime.strptime(maturity, '%Y-%m-%d').date()
-                frequency = f"{frequency}QE"  # Add QE suffix directly
+                accrual_start = datetime.strptime(accrual_start, '%Y-%m-%d')
+                maturity = datetime.strptime(maturity, '%Y-%m-%d')
+                # Ensure frequency includes the "QE" suffix
+                
+                frequency = f"{frequency}QE"
             except (ValueError, TypeError) as e:
                 print(f"Error converting values for bond {i}: {e}")
                 prices.append("Invalid Input")
                 continue
 
             # Create FixedBond with positional arguments
-            print(currency)
-            print(coupon)
-            print(accrual_start)
-            print(maturity)
-            print(frequency)
-            bond = FixedBond(currency, coupon,   accrual_start, maturity, frequency)
+            bond = FixedBond(currency, coupon, accrual_start, maturity, frequency)
             timetable = bond.timetable()
-            print(bond)
-            print(timetable)
 
-            # Extract amounts from timetable
-            amounts = [event['quantity'] for event in timetable["events"]]
-            prices.append(f"${np.sum(amounts):.2f}")
+            # Setup the discount data and dataset for pricing
+            discount_data = ("ZERO_RATES", np.array([[0.0, 0.04], [5.0, 0.04]]))
+            dataset = {
+                "BASE": "USD",
+                "PRICING_TS": py_to_ts(datetime(2023, 12, 31)).value,  
+                "ASSETS": {"USD": discount_data},
+            }
+
+            # Price the bond using FixedModel
+            model = FixedModel()
+            price, _ = model.price(timetable, dataset)
+
+            prices.append(f"${price:.6f}")
         except Exception as e:
             print(f"Error calculating price for bond {i}: {e}")
             prices.append("Error")
 
     return prices
+
+
 
 
 
