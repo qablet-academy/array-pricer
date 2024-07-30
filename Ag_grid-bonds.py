@@ -1,8 +1,8 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, callback_context
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
-from datetime import datetime
+from datetime import datetime, timedelta
 from qablet_contracts.bnd.fixed import FixedBond
 from qablet_contracts.timetable import py_to_ts
 from qablet.base.fixed import FixedModel
@@ -11,29 +11,31 @@ import numpy as np
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
-# Initial data for the table
-initial_data = [
-    {
-        "Bond": "Bond 1",
-        "Currency": "USD",
-        "Coupon": 0.025,
-        "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-        "Maturity": datetime.today().strftime("%Y-%m-%d"),
-        "Frequency": 1,
-        "Notional": 100,
-        "Price": "",
-    }
-]
+# Function to generate initial data
+def generate_initial_data():
+    return [
+        {
+            "Bond": "Bond 1",
+            "Currency": "USD",
+            "Coupon": 2.5,
+            "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
+            "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
+            "Frequency": 1,
+            "Notional": 100,
+            "Price": "$95.965211",
+        }
+    ]
 
-# Column definitions for AG Grid
+# Column definitions for AG Grid without the delete column
 column_defs = [
-    {"headerName": "Bond", "field": "Bond", "editable": False},
+    {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
     {
         "headerName": "Currency",
         "field": "Currency",
         "editable": True,
         "cellEditor": "agSelectCellEditor",
         "cellEditorParams": {"values": ["USD", "EUR"]},
+        "width": 100,
     },
     {
         "headerName": "Coupon",
@@ -41,18 +43,21 @@ column_defs = [
         "editable": True,
         "type": "numericColumn",
         "cellEditor": "agNumberCellEditor",
+        "width": 100,
     },
     {
         "headerName": "Accrual Start",
         "field": "Accrual Start",
         "editable": True,
         "cellEditor": "agDateStringCellEditor",
+        "width": 150,
     },
     {
         "headerName": "Maturity",
         "field": "Maturity",
         "editable": True,
         "cellEditor": "agDateStringCellEditor",
+        "width": 150,
     },
     {
         "headerName": "Frequency",
@@ -60,6 +65,7 @@ column_defs = [
         "editable": True,
         "type": "numericColumn",
         "cellEditor": "agNumberCellEditor",
+        "width": 100,
     },
     {
         "headerName": "Notional",
@@ -67,8 +73,9 @@ column_defs = [
         "editable": True,
         "type": "numericColumn",
         "cellEditor": "agNumberCellEditor",
+        "width": 100,
     },
-    {"headerName": "Price", "field": "Price", "editable": False},
+    {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
 ]
 
 # Layout of the app
@@ -76,7 +83,7 @@ app.layout = html.Div(
     [
         AgGrid(
             id="bond-table",
-            rowData=initial_data,
+            rowData=generate_initial_data(),
             columnDefs=column_defs,
             defaultColDef={
                 "sortable": True,
@@ -94,46 +101,58 @@ app.layout = html.Div(
         html.Button(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
         ),
-        dcc.Store(id="bond-store", data=initial_data),
+        html.Button(
+            "Delete Selected Bond", id="delete-bond-button", n_clicks=0, style={"margin-top": "20px"}
+        ),
+        dcc.Store(id="bond-store", data=generate_initial_data()),
     ]
 )
 
-
-# Combined callback for adding a new bond and updating bond data
+# Combined callback to handle bond updates, additions, and deletions
 @app.callback(
     Output("bond-store", "data"),
-    [Input("add-bond-button", "n_clicks"), Input("bond-table", "cellValueChanged")],
-    State("bond-store", "data"),
+    [Input("add-bond-button", "n_clicks"),
+     Input("delete-bond-button", "n_clicks"),
+     Input("bond-table", "cellValueChanged")],
+    [State("bond-store", "data"),
+     State("bond-table", "selectedRows")],
+    prevent_initial_call=True
 )
-def handle_bond_data(n_clicks, cell_change, data):
-    ctx = dash.callback_context
+def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_rows):
+    ctx = callback_context
 
     if not ctx.triggered:
         return data
 
     trigger = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if trigger == "add-bond-button" and n_clicks > 0:
+    if trigger == "add-bond-button" and n_clicks_add > 0:
         new_index = len(data)
         new_bond = {
             "Bond": f"Bond {new_index + 1}",
             "Currency": "USD",
-            "Coupon": 0.025,
+            "Coupon": 5,
             "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-            "Maturity": datetime.today().strftime("%Y-%m-%d"),
-            "Frequency": 1,
+            "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
+            "Frequency": 2,
             "Notional": 100,
-            "Price": "",
+            "Price": "$97.503687",
         }
         data.append(new_bond)
-        return data
 
-    if trigger == "bond-table" and cell_change:
-        for change in cell_change:
-            row_id = int(change["rowIndex"])
-            field = change["colId"]
-            new_value = change["value"]
-            data[row_id][field] = new_value
+    elif trigger == "delete-bond-button" and n_clicks_delete > 0:
+        if selected_rows:
+            selected_bonds = [row.get("Bond") for row in selected_rows]
+            data = [d for d in data if d["Bond"] not in selected_bonds]
+
+    elif trigger == "bond-table" and cell_change:
+        if isinstance(cell_change, list):
+            for change in cell_change:
+                row_id = int(change.get("rowIndex", -1))
+                field = change.get("colId", "")
+                new_value = change.get("value", "")
+                if row_id >= 0 and field in data[0]:
+                    data[row_id][field] = new_value
 
         for bond in data:
             # Convert and validate inputs
@@ -164,12 +183,10 @@ def handle_bond_data(n_clicks, cell_change, data):
 
     return data
 
-
 # Callback to update the table data
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
 def update_table(data):
     return data
-
 
 if __name__ == "__main__":
     app.run_server(debug=True)
