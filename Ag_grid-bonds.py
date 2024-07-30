@@ -11,20 +11,24 @@ import numpy as np
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
-# Function to generate initial data
+# Function to generate initial bond data
 def generate_initial_data():
     return [
-        {
-            "Bond": "Bond 1",
-            "Currency": "USD",
-            "Coupon": 2.5,
-            "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-            "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
-            "Frequency": 1,
-            "Notional": 100,
-            "Price": "$95.965211",
-        }
+        create_default_bond(index=1)
     ]
+
+# Function to create a new bond with default values
+def create_default_bond(index):
+    return {
+        "Bond": f"Bond {index}",
+        "Currency": "USD",
+        "Coupon": 2.5,
+        "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
+        "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
+        "Frequency": 1,
+        "Notional": 100,
+        "Price": "$95.965211",
+    }
 
 # Column definitions for AG Grid without the delete column
 column_defs = [
@@ -127,17 +131,8 @@ def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_
     trigger = ctx.triggered[0]["prop_id"].split(".")[0]
 
     if trigger == "add-bond-button" and n_clicks_add > 0:
-        new_index = len(data)
-        new_bond = {
-            "Bond": f"Bond {new_index + 1}",
-            "Currency": "USD",
-            "Coupon": 5,
-            "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-            "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
-            "Frequency": 2,
-            "Notional": 100,
-            "Price": "$97.503687",
-        }
+        new_index = len(data) + 1
+        new_bond = create_default_bond(index=new_index)
         data.append(new_bond)
 
     elif trigger == "delete-bond-button" and n_clicks_delete > 0:
