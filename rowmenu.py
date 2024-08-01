@@ -7,15 +7,15 @@ from qablet_contracts.bnd.fixed import FixedBond
 from qablet_contracts.timetable import py_to_ts
 from qablet.base.fixed import FixedModel
 import numpy as np
-from enum import Enum
 
 # Initialize the Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
 
 # Function to generate initial bond data
 def generate_initial_data():
-    return [create_default_bond(index=1)]
-
+    return [
+        create_default_bond(index=1)
+    ]
 
 # Function to create a new bond with default values
 def create_default_bond(index):
@@ -28,58 +28,21 @@ def create_default_bond(index):
         "Frequency": 1,
         "Notional": 100,
         "Price": "$95.965211",
+        "menu": [
+            {"label": "Delete Bond", "value": "delete"},
+            {"label": "Show Timetable", "value": "timetable"},
+        ],
     }
 
-# Column definitions for AG Grid without the delete column
+# Column definitions for AG Grid with the row menu column
 column_defs = [
-    {"headerName": "...", "field": "Menu", "cellRenderer": "rowMenu", "width": 100},
     {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
-    {
-        "headerName": "Currency",
-        "field": "Currency",
-        "editable": True,
-        "cellEditor": "agSelectCellEditor",
-        "cellEditorParams": {"values": ["USD", "EUR"]},
-        "width": 100,
-    },
-    {
-        "headerName": "Coupon",
-        "field": "Coupon",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Accrual Start",
-        "field": "Accrual Start",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Maturity",
-        "field": "Maturity",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Frequency",
-        "field": "Frequency",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Notional",
-        "field": "Notional",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
+    {"headerName": "Currency", "field": "Currency", "editable": True, "width": 100},
+    {"headerName": "Coupon", "field": "Coupon", "editable": True, "width": 100},
+    {"headerName": "Accrual Start", "field": "Accrual Start", "editable": True, "width": 150},
+    {"headerName": "Maturity", "field": "Maturity", "editable": True, "width": 150},
+    {"headerName": "Frequency", "field": "Frequency", "editable": True, "width": 100},
+    {"headerName": "Notional", "field": "Notional", "editable": True, "width": 100},
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
     {"headerName": "Menu", "field": "menu", "cellRenderer": "rowMenu", "width": 150},
 ]
@@ -87,15 +50,6 @@ column_defs = [
 # Layout of the app
 app.layout = html.Div(
     [
-        html.Button(
-            "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
-        ),
-        html.Button(
-            "Delete Selected Bond",
-            id="delete-bond-button",
-            n_clicks=0,
-            style={"margin-top": "20px"},
-        ),
         AgGrid(
             id="bond-table",
             rowData=generate_initial_data(),
@@ -116,42 +70,81 @@ app.layout = html.Div(
         html.Button(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
         ),
-        html.Button(
-            "Delete Selected Bond", id="delete-bond-button", n_clicks=0, style={"margin-top": "20px"}
-        ),
         dcc.Store(id="bond-store", data=generate_initial_data()),
+        html.Div(
+            id="offcanvas-timetable",
+            className="offcanvas offcanvas-end",
+            tabIndex="-1",
+            style={"width": "300px"},
+            children=[
+                html.Div(
+                    className="offcanvas-header",
+                    children=[
+                        html.H5("Bond Timetable", className="offcanvas-title"),
+                        html.Button(
+                            type="button",
+                            className="btn-close",
+                            **{"data-bs-dismiss": "offcanvas"},
+                            **{"aria-label": "Close"}
+                        )
+                    ]
+                ),
+                html.Div(id="timetable-content", className="offcanvas-body")
+            ]
+        ),
+        html.P(id="cellrenderer-data"),
     ]
 )
 
-# Combined callback to handle bond updates, additions, and deletions
+# Callback to add a new bond
 @app.callback(
     Output("bond-store", "data"),
-    [Input("add-bond-button", "n_clicks"),
-     Input("delete-bond-button", "n_clicks"),
-     Input("bond-table", "cellValueChanged")],
-    [State("bond-store", "data"),
-     State("bond-table", "selectedRows")],
+    Input("add-bond-button", "n_clicks"),
+    State("bond-store", "data"),
     prevent_initial_call=True
 )
-def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_rows):
-    ctx = callback_context
-
-    if not ctx.triggered:
-        return data
-
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
-
-    if trigger == "add-bond-button" and n_clicks_add > 0:
+def add_bond(n_clicks_add, data):
+    if n_clicks_add > 0:
         new_index = len(data) + 1
         new_bond = create_default_bond(index=new_index)
         data.append(new_bond)
+    return data
 
-    elif trigger == "delete-bond-button" and n_clicks_delete > 0:
-        if selected_rows:
-            selected_bonds = [row.get("Bond") for row in selected_rows]
-            data = [d for d in data if d["Bond"] not in selected_bonds]
+# Callback to handle cell renderer data
+@app.callback(
+    #Output("bond-store", "data", allow_duplicate=True),
+   #Output("timetable-content", "children"),
+    Output("cellrenderer-data", "children"),
+    Input("bond-table", "cellRendererData"),
+    State("bond-store", "data"),
+    prevent_initial_call=True
+)
+def handle_menu_actions(data):
+    if data:
+        return (
+            "You selected option {} from the colId {}, rowIndex {}, rowId {}.".format(
+                data["value"],
+                data["colId"],
+                data["rowIndex"],
+                data["rowId"],
+            )
+        )
+    return "No menu item selected."
 
-    elif trigger == "bond-table" and cell_change:
+# Callback to update the table data
+@app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
+def update_table(data):
+    return data
+
+# Callback to handle bond data changes and pricing
+@app.callback(
+    Output("bond-store", "data", allow_duplicate=True),
+    Input("bond-table", "cellValueChanged"),
+    State("bond-store", "data"),
+    prevent_initial_call=True
+)
+def update_bond_data(cell_change, data):
+    if cell_change:
         if isinstance(cell_change, list):
             for change in cell_change:
                 row_id = int(change.get("rowIndex", -1))
@@ -183,11 +176,6 @@ def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_
 
             bond["Price"] = f"${price * notional:.6f}"
 
-    return data
-
-# Callback to update the table data
-@app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
-def update_table(data):
     return data
 
 if __name__ == "__main__":
