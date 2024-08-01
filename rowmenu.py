@@ -37,52 +37,12 @@ def create_default_bond(index):
 # Column definitions for AG Grid with the row menu column
 column_defs = [
     {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
-    {
-        "headerName": "Currency",
-        "field": "Currency",
-        "editable": True,
-        "cellEditor": "agSelectCellEditor",
-        "cellEditorParams": {"values": ["USD", "EUR"]},
-        "width": 100,
-    },
-    {
-        "headerName": "Coupon",
-        "field": "Coupon",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Accrual Start",
-        "field": "Accrual Start",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Maturity",
-        "field": "Maturity",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Frequency",
-        "field": "Frequency",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Notional",
-        "field": "Notional",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
+    {"headerName": "Currency", "field": "Currency", "editable": True, "width": 100},
+    {"headerName": "Coupon", "field": "Coupon", "editable": True, "width": 100},
+    {"headerName": "Accrual Start", "field": "Accrual Start", "editable": True, "width": 150},
+    {"headerName": "Maturity", "field": "Maturity", "editable": True, "width": 150},
+    {"headerName": "Frequency", "field": "Frequency", "editable": True, "width": 100},
+    {"headerName": "Notional", "field": "Notional", "editable": True, "width": 100},
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
     {"headerName": "Menu", "field": "menu", "cellRenderer": "rowMenu", "width": 150},
 ]
@@ -152,43 +112,24 @@ def add_bond(n_clicks_add, data):
 
 # Callback to handle cell renderer data
 @app.callback(
-    Output("bond-store", "data", allow_duplicate=True),
-    Output("timetable-content", "children"),
+    #Output("bond-store", "data", allow_duplicate=True),
+   #Output("timetable-content", "children"),
     Output("cellrenderer-data", "children"),
     Input("bond-table", "cellRendererData"),
     State("bond-store", "data"),
     prevent_initial_call=True
 )
-def handle_menu_actions(cell_renderer_data, data):
-    print("Cell Renderer Data Callback Triggered")
-    if cell_renderer_data:
-        col_id = cell_renderer_data.get("colId", "")
-        row_index = cell_renderer_data.get("rowIndex", -1)
-        value = cell_renderer_data.get("value", "")
-        print(f"Cell Renderer Data: col_id={col_id}, row_index={row_index}, value={value}")
-
-        timetable_content = ""
-        cellrenderer_text = f"You selected option {value} from the colId {col_id}, rowIndex {row_index}."
-
-        if row_index >= 0 and col_id == "menu":
-            if value == "delete":
-                bond_to_delete = data[row_index]["Bond"]
-                data = [d for d in data if d["Bond"] != bond_to_delete]
-            elif value == "timetable":
-                bond = data[row_index]
-                coupon = float(bond["Coupon"]) / 100
-                accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
-                maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
-                frequency = f"{int(bond['Frequency'])}QE"
-                currency = bond["Currency"]
-                notional = float(bond["Notional"])
-
-                bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
-                events = bond_obj.print_events()
-                timetable_content = html.Pre(events)
-
-        return data, timetable_content, cellrenderer_text
-    return dash.no_update, dash.no_update, "No menu item selected."
+def handle_menu_actions(data):
+    if data:
+        return (
+            "You selected option {} from the colId {}, rowIndex {}, rowId {}.".format(
+                data["value"],
+                data["colId"],
+                data["rowIndex"],
+                data["rowId"],
+            )
+        )
+    return "No menu item selected."
 
 # Callback to update the table data
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
