@@ -241,5 +241,37 @@ def update_bond_data(cell_change, data):
 
     return data
 
+
+# Callback to update the table data
+@app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
+def update_table(data):
+    return data
+
+# Callback to show timetable in the off-canvas
+@app.callback(
+    [Output("timetable-content", "children"),
+     Output("offcanvas-timetable", "is_open")],
+    Input("bond-table", "cellRendererData"),
+    State("bond-store", "data"),
+)
+def show_timetable(menu_data, data):
+    if menu_data and menu_data.get("value") == MenuAction.SHOW_TIMETABLE.value:
+        row_index = menu_data.get("rowIndex", -1)
+        if row_index >= 0 and row_index < len(data):
+            bond = data[row_index]
+            coupon = float(bond["Coupon"]) / 100
+            accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
+            maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
+            frequency = f"{int(bond['Frequency'])}QE"
+            currency = bond["Currency"]
+            notional = float(bond["Notional"])
+
+            bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+            events = bond_obj.print_events()
+
+            return html.Pre(events), True
+
+    return "No timetable available.", False
+
 if __name__ == "__main__":
     app.run_server(debug=True)
