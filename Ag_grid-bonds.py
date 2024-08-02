@@ -198,7 +198,6 @@ def update_bond_data(
 
     return data
 
-
 # Callback to update the table data
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
 def update_table(data):
@@ -224,9 +223,17 @@ def show_timetable(menu_data, data):
             notional = float(bond["Notional"])
 
             bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
-            events = bond_obj.print_events()
+            events = bond_obj.timetable()
 
-            return html.Pre(events), True
+            timetable_rows = []
+            for event in events['events'].to_pandas().itertuples(index=False):
+                row = html.Tr([html.Td(getattr(event, col)) for col in events['events'].schema.names])
+                timetable_rows.append(row)
+
+            return html.Table(
+                [html.Thead(html.Tr([html.Th(col) for col in events['events'].schema.names])),
+                 html.Tbody(timetable_rows)]
+            ), True
 
     return "No timetable available.", False
 
