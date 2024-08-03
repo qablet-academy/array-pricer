@@ -11,7 +11,17 @@ from enum import Enum
 import dash_bootstrap_components as dbc
 
 # Initialize the Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+
+# Define the enum for menu actions
+class MenuAction(Enum):
+    DELETE = 1
+    SHOW_TIMETABLE = 2
+
+DEFAULT_MENU = [
+    {"label": "Delete", "value": MenuAction.DELETE.value},
+    {"label": "Show Timetable", "value": MenuAction.SHOW_TIMETABLE.value},
+]
 
 # Function to generate initial bond data
 def generate_initial_data():
@@ -28,6 +38,7 @@ def create_default_bond(index):
         "Frequency": 1,
         "Notional": 100,
         "Price": "$95.965211",
+        "Menu": DEFAULT_MENU,
     }
 
 # Column definitions for AG Grid with the row menu column
@@ -104,47 +115,52 @@ app.layout = html.Div(
                 "rowSelection": "single",
                 "animateRows": True,
             },
-            style={"height": "300px", "width": "100%"},
-        ),
-        html.Button(
-            "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
-        ),
-        html.Button(
-            "Delete Selected Bond", id="delete-bond-button", n_clicks=0, style={"margin-top": "20px"}
+            style={"height": "80vh", "width": "100%"},
         ),
         dcc.Store(id="bond-store", data=generate_initial_data()),
+        dbc.Offcanvas(
+            html.Div(id="timetable-content"),
+            id="offcanvas-timetable",
+            title="Bond Timetable",
+            is_open=False,
+            placement="end",
+            backdrop=True,
+        )
     ]
 )
 
 # Combined callback to handle bond updates, additions, and deletions
 @app.callback(
     Output("bond-store", "data"),
-    [Input("add-bond-button", "n_clicks"),
-     Input("delete-bond-button", "n_clicks"),
-     Input("bond-table", "cellValueChanged")],
-    [State("bond-store", "data"),
-     State("bond-table", "selectedRows")],
-    prevent_initial_call=True
+    [
+        Input("add-bond-button", "n_clicks"),
+        Input("bond-table", "cellValueChanged"),
+        Input("bond-table", "cellRendererData"),
+    ],
+    [State("bond-store", "data"), State("bond-table", "selectedRows")],
 )
-def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_rows):
+def update_bond_data(
+    n_clicks_add, cell_change, menu_data, data, selected_rows
+):
     ctx = callback_context
 
     if not ctx.triggered:
         return data
 
-    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+    trigger = ctx.triggered[0]["prop_id"]
 
-    if trigger == "add-bond-button" and n_clicks_add > 0:
+    if trigger == "add-bond-button.n_clicks" and n_clicks_add > 0:
         new_index = len(data) + 1
         new_bond = create_default_bond(index=new_index)
         data.append(new_bond)
 
-    elif trigger == "delete-bond-button" and n_clicks_delete > 0:
-        if selected_rows:
-            selected_bonds = [row.get("Bond") for row in selected_rows]
-            data = [d for d in data if d["Bond"] not in selected_bonds]
+    elif trigger == "bond-table.cellRendererData":
+        if menu_data and menu_data.get("value") == MenuAction.DELETE.value:
+            row = menu_data.get("rowIndex")
+            if row < len(data):
+                del data[row]
 
-    elif trigger == "bond-table" and cell_change:
+    elif trigger == "bond-table.cellValueChanged" and cell_change:
         if isinstance(cell_change, list):
             for change in cell_change:
                 row_id = int(change.get("rowIndex", -1))
@@ -182,11 +198,44 @@ def update_bond_data(n_clicks_add, n_clicks_delete, cell_change, data, selected_
 
     return data
 
-
 # Callback to update the table data
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
 def update_table(data):
     return data
+
+# Callback to show timetable in the off-canvas
+@app.callback(
+    [Output("timetable-content", "children"),
+     Output("offcanvas-timetable", "is_open")],
+    Input("bond-table", "cellRendererData"),
+    State("bond-store", "data"),
+)
+def show_timetable(menu_data, data):
+    if menu_data and menu_data.get("value") == MenuAction.SHOW_TIMETABLE.value:
+        row_index = menu_data.get("rowIndex", -1)
+        if row_index >= 0 and row_index < len(data):
+            bond = data[row_index]
+            coupon = float(bond["Coupon"]) / 100
+            accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
+            maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
+            frequency = f"{int(bond['Frequency'])}QE"
+            currency = bond["Currency"]
+            notional = float(bond["Notional"])
+
+            bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+            events = bond_obj.timetable()
+
+            timetable_rows = []
+            for event in events['events'].to_pandas().itertuples(index=False):
+                row = html.Tr([html.Td(getattr(event, col)) for col in events['events'].schema.names])
+                timetable_rows.append(row)
+
+            return html.Table(
+                [html.Thead(html.Tr([html.Th(col) for col in events['events'].schema.names])),
+                 html.Tbody(timetable_rows)]
+            ), True
+
+    return "No timetable available.", False
 
 if __name__ == "__main__":
     app.run_server(debug=True)
