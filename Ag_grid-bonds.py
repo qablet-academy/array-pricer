@@ -3,7 +3,6 @@ from dash import dcc, html, callback_context
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
 from datetime import datetime, timedelta
-from qablet_contracts.bnd.fixed import FixedBond
 from qablet_contracts.timetable import py_to_ts
 from qablet.base.fixed import FixedModel
 import numpy as np
@@ -11,6 +10,7 @@ from enum import Enum
 import dash_bootstrap_components as dbc
 import io
 import contextlib
+from src.bond import bond_dict_to_obj  # Import the new function
 
 # Initialize the Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -173,15 +173,7 @@ def update_bond_data(
 
         for bond in data:
             # Convert and validate inputs
-            coupon = float(bond["Coupon"]) / 100
-            accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
-            maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
-            frequency = f"{int(bond['Frequency'])}QE"
-            currency = bond["Currency"]
-            notional = float(bond["Notional"])
-
-            # Create FixedBond with positional arguments
-            bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+            bond_obj, notional = bond_dict_to_obj(bond)
             timetable = bond_obj.timetable()
 
             # Setup the discount data and dataset for pricing
@@ -223,14 +215,7 @@ def show_timetable(menu_data, data):
         row_index = menu_data.get("rowIndex", -1)
         if row_index >= 0 and row_index < len(data):
             bond = data[row_index]
-            coupon = float(bond["Coupon"]) / 100
-            accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
-            maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
-            frequency = f"{int(bond['Frequency'])}QE"
-            currency = bond["Currency"]
-            notional = float(bond["Notional"])
-
-            bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+            bond_obj, _ = bond_dict_to_obj(bond)
 
             events = capture_events(bond_obj)
 
