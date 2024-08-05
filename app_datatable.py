@@ -1,12 +1,15 @@
-import dash
-from dash import dcc, html
-from dash.dependencies import Input, Output, State
+"""ArrayPricer for Bonds using DataTable"""
+
 from datetime import datetime
-from dash.dash_table import DataTable
-from qablet_contracts.bnd.fixed import FixedBond
-from qablet_contracts.timetable import TS_EVENT_SCHEMA, py_to_ts
-from qablet.base.fixed import FixedModel
+
+import dash
 import numpy as np
+from dash import html
+from dash.dash_table import DataTable
+from dash.dependencies import Input, Output, State
+from qablet.base.fixed import FixedModel
+from qablet_contracts.bnd.fixed import FixedBond
+from qablet_contracts.timetable import py_to_ts
 
 # Initialize the Dash app
 app = dash.Dash(__name__)

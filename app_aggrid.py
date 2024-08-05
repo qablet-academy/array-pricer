@@ -1,28 +1,37 @@
+"""ArrayPricer for Bonds using AG Grid"""
+
+from datetime import datetime
+from enum import Enum
+
 import dash
-from dash import dcc, html, callback_context
+import dash_bootstrap_components as dbc
+import numpy as np
+from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
-from datetime import datetime, timedelta
-from qablet_contracts.timetable import py_to_ts
 from qablet.base.fixed import FixedModel
-import numpy as np
-from enum import Enum
-import dash_bootstrap_components as dbc
-import io
-import contextlib
-from src.bond import bond_dict_to_obj, create_default_bond  # Import the new function
+from qablet_contracts.timetable import py_to_ts
+
+from src.bond import bond_dict_to_obj, create_default_bond
 
 # Initialize the Dash app
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True,
+)
+
 
 # Define the enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
+
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
+
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -108,9 +117,10 @@ app.layout = html.Div(
             is_open=False,
             placement="end",
             backdrop=True,
-        )
+        ),
     ]
 )
+
 
 # Combined callback to handle bond updates, additions, and deletions
 @app.callback(
@@ -122,9 +132,7 @@ app.layout = html.Div(
     ],
     [State("bond-store", "data"), State("bond-table", "selectedRows")],
 )
-def update_bond_data(
-    n_clicks_add, cell_change, menu_data, data, selected_rows
-):
+def update_bond_data(n_clicks_add, cell_change, menu_data, data, selected_rows):
     ctx = callback_context
 
     if not ctx.triggered:
@@ -173,21 +181,16 @@ def update_bond_data(
 
     return data
 
+
 # Callback to update the table data
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
 def update_table(data):
     return data
 
-# Function to capture and format the timetable events
-def capture_events(bond_obj):
-    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
-        bond_obj.print_events()
-        return buf.getvalue()
 
 # Callback to show timetable in the off-canvas
 @app.callback(
-    [Output("timetable-content", "children"),
-     Output("offcanvas-timetable", "is_open")],
+    [Output("timetable-content", "children"), Output("offcanvas-timetable", "is_open")],
     Input("bond-table", "cellRendererData"),
     State("bond-store", "data"),
 )
@@ -198,13 +201,14 @@ def show_timetable(menu_data, data):
             bond = data[row_index]
             bond_obj, _ = bond_dict_to_obj(bond)
 
-            events = capture_events(bond_obj)
+            events = bond_obj.to_string()
 
             full_text = f"```\n{events}\n```"
 
             return full_text, True
 
     return "", False
+
 
 if __name__ == "__main__":
     app.run_server(debug=True)
