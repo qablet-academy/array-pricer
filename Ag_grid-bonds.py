@@ -10,7 +10,7 @@ from enum import Enum
 import dash_bootstrap_components as dbc
 import io
 import contextlib
-from src.bond import bond_dict_to_obj  # Import the new function
+from src.bond import bond_dict_to_obj, create_default_bond  # Import the new function
 
 # Initialize the Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -20,28 +20,9 @@ class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
-DEFAULT_MENU = [
-    {"label": "Delete", "value": MenuAction.DELETE.value},
-    {"label": "Show Timetable", "value": MenuAction.SHOW_TIMETABLE.value},
-]
-
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
-
-# Function to create a new bond with default values
-def create_default_bond(index):
-    return {
-        "Bond": f"Bond {index}",
-        "Currency": "USD",
-        "Coupon": 2.5,
-        "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-        "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
-        "Frequency": 1,
-        "Notional": 100,
-        "Price": "$95.965211",
-        "Menu": DEFAULT_MENU,
-    }
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
