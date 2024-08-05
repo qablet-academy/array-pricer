@@ -1,16 +1,26 @@
-import dash
-from dash import dcc, html, callback_context
-from dash.dependencies import Input, Output, State
-from dash_ag_grid import AgGrid
-from datetime import datetime, timedelta
-from qablet_contracts.bnd.fixed import FixedBond
-from qablet_contracts.timetable import py_to_ts
-from qablet.base.fixed import FixedModel
-import numpy as np
+"""ArrayPricer for Bonds using AG Grid"""
+
+from datetime import datetime
 from enum import Enum
 
+import dash
+import dash_bootstrap_components as dbc
+import numpy as np
+from dash import callback_context, dcc, html
+from dash.dependencies import Input, Output, State
+from dash_ag_grid import AgGrid
+from qablet.base.fixed import FixedModel
+from qablet_contracts.timetable import py_to_ts
+
+from src.bond import bond_dict_to_obj, create_default_bond
+from src.aggrid_utils import select_cell, numeric_cell, datestring_cell
+
 # Initialize the Dash app
-app = dash.Dash(__name__)
+app = dash.Dash(
+    __name__,
+    external_stylesheets=[dbc.themes.BOOTSTRAP],
+    suppress_callback_exceptions=True,
+)
 
 
 # Define the enum for menu actions
@@ -19,82 +29,21 @@ class MenuAction(Enum):
     SHOW_TIMETABLE = 2
 
 
-DEFAULT_MENU = [
-    {"label": "Delete", "value": MenuAction.DELETE.value},
-    {"label": "Show Timetable", "value": MenuAction.SHOW_TIMETABLE.value},
-]
-
-
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
 
 
-# Function to create a new bond with default values
-def create_default_bond(index):
-    return {
-        "Bond": f"Bond {index}",
-        "Currency": "USD",
-        "Coupon": 2.5,
-        "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-        "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
-        "Frequency": 1,
-        "Notional": 100,
-        "Price": "$95.965211",
-        "Menu": DEFAULT_MENU,
-    }
-
-
-# Column definitions for AG Grid without the delete column
+# Column definitions for AG Grid with the row menu column
 column_defs = [
     {"headerName": "...", "field": "Menu", "cellRenderer": "rowMenu", "width": 100},
     {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
-    {
-        "headerName": "Currency",
-        "field": "Currency",
-        "editable": True,
-        "cellEditor": "agSelectCellEditor",
-        "cellEditorParams": {"values": ["USD", "EUR"]},
-        "width": 100,
-    },
-    {
-        "headerName": "Coupon",
-        "field": "Coupon",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Accrual Start",
-        "field": "Accrual Start",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Maturity",
-        "field": "Maturity",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Frequency",
-        "field": "Frequency",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Notional",
-        "field": "Notional",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
+    select_cell("Currency", ["USD", "EUR"]),
+    numeric_cell("Coupon"),
+    datestring_cell("Accrual Start"),
+    datestring_cell("Maturity"),
+    numeric_cell("Frequency"),
+    numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
 ]
 
@@ -103,12 +52,6 @@ app.layout = html.Div(
     [
         html.Button(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
-        ),
-        html.Button(
-            "Delete Selected Bond",
-            id="delete-bond-button",
-            n_clicks=0,
-            style={"margin-top": "20px"},
         ),
         AgGrid(
             id="bond-table",
@@ -128,6 +71,14 @@ app.layout = html.Div(
             style={"height": "80vh", "width": "100%"},
         ),
         dcc.Store(id="bond-store", data=generate_initial_data()),
+        dbc.Offcanvas(
+            dcc.Markdown(id="timetable-content"),
+            id="offcanvas-timetable",
+            title="Bond Timetable",
+            is_open=False,
+            placement="end",
+            backdrop=True,
+        ),
     ]
 )
 
@@ -137,15 +88,12 @@ app.layout = html.Div(
     Output("bond-store", "data"),
     [
         Input("add-bond-button", "n_clicks"),
-        Input("delete-bond-button", "n_clicks"),
         Input("bond-table", "cellValueChanged"),
         Input("bond-table", "cellRendererData"),
     ],
     [State("bond-store", "data"), State("bond-table", "selectedRows")],
 )
-def update_bond_data(
-    n_clicks_add, n_clicks_delete, cell_change, menu_data, data, selected_rows
-):
+def update_bond_data(n_clicks_add, cell_change, menu_data, data, selected_rows):
     ctx = callback_context
 
     if not ctx.triggered:
@@ -158,17 +106,11 @@ def update_bond_data(
         new_bond = create_default_bond(index=new_index)
         data.append(new_bond)
 
-    elif trigger == "delete-bond-button.n_clicks" and n_clicks_delete > 0:
-        if selected_rows:
-            selected_bonds = [row.get("Bond") for row in selected_rows]
-            data = [d for d in data if d["Bond"] not in selected_bonds]
-
     elif trigger == "bond-table.cellRendererData":
-        if menu_data.get("value") == MenuAction.DELETE.value:
+        if menu_data and menu_data.get("value") == MenuAction.DELETE.value:
             row = menu_data.get("rowIndex")
-            del data[row]
-        elif menu_data.get("value") == MenuAction.SHOW_TIMETABLE.value:
-            pass  # To be implemented
+            if row < len(data):
+                del data[row]
 
     elif trigger == "bond-table.cellValueChanged" and cell_change:
         if isinstance(cell_change, list):
@@ -181,15 +123,7 @@ def update_bond_data(
 
         for bond in data:
             # Convert and validate inputs
-            coupon = float(bond["Coupon"]) / 100
-            accrual_start = datetime.strptime(bond["Accrual Start"], "%Y-%m-%d")
-            maturity = datetime.strptime(bond["Maturity"], "%Y-%m-%d")
-            frequency = f"{int(bond['Frequency'])}QE"
-            currency = bond["Currency"]
-            notional = float(bond["Notional"])
-
-            # Create FixedBond with positional arguments
-            bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
+            bond_obj, notional = bond_dict_to_obj(bond)
             timetable = bond_obj.timetable()
 
             # Setup the discount data and dataset for pricing
@@ -213,6 +147,24 @@ def update_bond_data(
 @app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
 def update_table(data):
     return data
+
+
+# Callback to show timetable in the off-canvas
+@app.callback(
+    [Output("timetable-content", "children"), Output("offcanvas-timetable", "is_open")],
+    Input("bond-table", "cellRendererData"),
+    State("bond-store", "data"),
+)
+def show_timetable(menu_data, data):
+    if menu_data and menu_data.get("value") == MenuAction.SHOW_TIMETABLE.value:
+        row_index = menu_data.get("rowIndex", -1)
+        if row_index >= 0 and row_index < len(data):
+            bond_obj, _ = bond_dict_to_obj(data[row_index])
+
+            full_text = f"```\n{bond_obj.to_string()}\n```"
+            return full_text, True
+
+    return "", False
 
 
 if __name__ == "__main__":

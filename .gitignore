@@ -1,0 +1,7 @@
+/.venv
+/.vscode
+/setup.cfg
+/scratch
+__pycache__/
+/restats
+*.pyd
