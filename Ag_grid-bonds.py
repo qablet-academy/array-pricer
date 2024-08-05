@@ -9,6 +9,8 @@ from qablet.base.fixed import FixedModel
 import numpy as np
 from enum import Enum
 import dash_bootstrap_components as dbc
+import io
+import contextlib
 
 # Initialize the Dash app
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP], suppress_callback_exceptions=True)
@@ -119,7 +121,7 @@ app.layout = html.Div(
         ),
         dcc.Store(id="bond-store", data=generate_initial_data()),
         dbc.Offcanvas(
-            html.Div(id="timetable-content"),
+            dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
             title="Bond Timetable",
             is_open=False,
@@ -203,6 +205,12 @@ def update_bond_data(
 def update_table(data):
     return data
 
+# Function to capture and format the timetable events
+def capture_events(bond_obj):
+    with io.StringIO() as buf, contextlib.redirect_stdout(buf):
+        bond_obj.print_events()
+        return buf.getvalue()
+
 # Callback to show timetable in the off-canvas
 @app.callback(
     [Output("timetable-content", "children"),
@@ -223,19 +231,14 @@ def show_timetable(menu_data, data):
             notional = float(bond["Notional"])
 
             bond_obj = FixedBond(currency, coupon, accrual_start, maturity, frequency)
-            events = bond_obj.timetable()
 
-            timetable_rows = []
-            for event in events['events'].to_pandas().itertuples(index=False):
-                row = html.Tr([html.Td(getattr(event, col)) for col in events['events'].schema.names])
-                timetable_rows.append(row)
+            events = capture_events(bond_obj)
 
-            return html.Table(
-                [html.Thead(html.Tr([html.Th(col) for col in events['events'].schema.names])),
-                 html.Tbody(timetable_rows)]
-            ), True
+            full_text = f"```\n{events}\n```"
 
-    return "No timetable available.", False
+            return full_text, True
+
+    return "", False
 
 if __name__ == "__main__":
     app.run_server(debug=True)
