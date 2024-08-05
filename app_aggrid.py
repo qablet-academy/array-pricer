@@ -13,6 +13,7 @@ from qablet.base.fixed import FixedModel
 from qablet_contracts.timetable import py_to_ts
 
 from src.bond import bond_dict_to_obj, create_default_bond
+from src.aggrid_utils import select_cell, numeric_cell, datestring_cell
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -37,52 +38,12 @@ def generate_initial_data():
 column_defs = [
     {"headerName": "...", "field": "Menu", "cellRenderer": "rowMenu", "width": 100},
     {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
-    {
-        "headerName": "Currency",
-        "field": "Currency",
-        "editable": True,
-        "cellEditor": "agSelectCellEditor",
-        "cellEditorParams": {"values": ["USD", "EUR"]},
-        "width": 100,
-    },
-    {
-        "headerName": "Coupon",
-        "field": "Coupon",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Accrual Start",
-        "field": "Accrual Start",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Maturity",
-        "field": "Maturity",
-        "editable": True,
-        "cellEditor": "agDateStringCellEditor",
-        "width": 150,
-    },
-    {
-        "headerName": "Frequency",
-        "field": "Frequency",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
-    {
-        "headerName": "Notional",
-        "field": "Notional",
-        "editable": True,
-        "type": "numericColumn",
-        "cellEditor": "agNumberCellEditor",
-        "width": 100,
-    },
+    select_cell("Currency", ["USD", "EUR"]),
+    numeric_cell("Coupon"),
+    datestring_cell("Accrual Start"),
+    datestring_cell("Maturity"),
+    numeric_cell("Frequency"),
+    numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
 ]
 
@@ -198,13 +159,9 @@ def show_timetable(menu_data, data):
     if menu_data and menu_data.get("value") == MenuAction.SHOW_TIMETABLE.value:
         row_index = menu_data.get("rowIndex", -1)
         if row_index >= 0 and row_index < len(data):
-            bond = data[row_index]
-            bond_obj, _ = bond_dict_to_obj(bond)
+            bond_obj, _ = bond_dict_to_obj(data[row_index])
 
-            events = bond_obj.to_string()
-
-            full_text = f"```\n{events}\n```"
-
+            full_text = f"```\n{bond_obj.to_string()}\n```"
             return full_text, True
 
     return "", False
