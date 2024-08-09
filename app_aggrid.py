@@ -22,17 +22,14 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-
 # Define the enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
-
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
-
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -115,7 +112,6 @@ app.layout = html.Div(
     ]
 )
 
-
 # Combined callback to handle bond updates, additions, and deletions
 @app.callback(
     Output("bond-store", "data"),
@@ -158,9 +154,10 @@ def update_bond_data(n_clicks_add, cell_change, menu_data, rate_change, is_open,
                 new_value = change.get("value", "")
                 if row_id >= 0 and field in data[0]:
                     data[row_id][field] = new_value
+                    data[row_id]["Price"] = None  # Set Price to None to trigger recalculation
 
-    # Update Bond Prices
-    if trigger in ["rate-editor.cellValueChanged", "offcanvas-rate-editor.is_open"]:
+    # Update Bond Prices (Recalculate prices for all bonds when rate editor is triggered or cell value changes)
+    if trigger in ["rate-editor.cellValueChanged", "offcanvas-rate-editor.is_open", "bond-table.cellValueChanged"]:
         discount_data = (
             "ZERO_RATES",
             np.array([[rate["Year"], rate["Rate"] / 100] for rate in rate_data]),
@@ -172,6 +169,7 @@ def update_bond_data(n_clicks_add, cell_change, menu_data, rate_change, is_open,
         }
         model = FixedModel()
 
+        # Recalculate prices for all bonds
         for bond in data:
             bond_obj, notional = bond_dict_to_obj(bond)
             timetable = bond_obj.timetable()

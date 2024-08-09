@@ -31,6 +31,6 @@ def create_default_bond(index):
         "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
         "Frequency": 1,
         "Notional": 100,
-        "Price": "$95.965211",
+        "Price": "",
         "Menu": DEFAULT_MENU,
     }
