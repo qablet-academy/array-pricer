@@ -1,19 +1,16 @@
 """ArrayPricer for Bonds using AG Grid"""
 
-from datetime import datetime
 from enum import Enum
 
 import dash
 import dash_bootstrap_components as dbc
-import numpy as np
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
-from qablet.base.fixed import FixedModel
-from qablet_contracts.timetable import py_to_ts
 
+from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
-from src.aggrid_utils import select_cell, numeric_cell, datestring_cell
+from src.price import update_price
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -22,14 +19,17 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
+
 # Define the enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
+
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
+
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -51,7 +51,10 @@ app.layout = html.Div(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
         ),
         html.Button(
-            "Rate Editor", id="rate-editor-button", n_clicks=0, style={"margin-top": "20px"}
+            "Rate Editor",
+            id="rate-editor-button",
+            n_clicks=0,
+            style={"margin-top": "20px"},
         ),
         AgGrid(
             id="bond-table",
@@ -82,13 +85,10 @@ app.layout = html.Div(
         dbc.Offcanvas(
             AgGrid(
                 id="rate-editor",
-                rowData=[
-                    {"Year": 0.0, "Rate": 4.0},
-                    {"Year": 5.0, "Rate": 4.0}
-                ],
+                rowData=[{"Year": 0.0, "Rate": 4.0}, {"Year": 5.0, "Rate": 4.0}],
                 columnDefs=[
-                    {"headerName": "Year", "field": "Year", "editable": False},
-                    {"headerName": "Rate", "field": "Rate", "editable": True, "type": "numericColumn"}
+                    numeric_cell("Year"),
+                    numeric_cell("Rate"),
                 ],
                 defaultColDef={
                     "sortable": True,
@@ -112,6 +112,7 @@ app.layout = html.Div(
     ]
 )
 
+
 # Combined callback to handle bond updates, additions, and deletions
 @app.callback(
     Output("bond-store", "data"),
@@ -120,11 +121,16 @@ app.layout = html.Div(
         Input("bond-table", "cellValueChanged"),
         Input("bond-table", "cellRendererData"),
         Input("rate-editor", "cellValueChanged"),
-        Input("offcanvas-rate-editor", "is_open"),
     ],
-    [State("bond-store", "data"), State("bond-table", "selectedRows"), State("rate-editor", "rowData")],
+    State("bond-store", "data"),
 )
-def update_bond_data(n_clicks_add, cell_change, menu_data, rate_change, is_open, data, selected_rows, rate_data):
+def update_bond_data(
+    n_clicks_add,
+    cell_change,
+    menu_data,
+    _rate_change,
+    data,
+):
     ctx = callback_context
 
     if not ctx.triggered:
@@ -154,35 +160,26 @@ def update_bond_data(n_clicks_add, cell_change, menu_data, rate_change, is_open,
                 new_value = change.get("value", "")
                 if row_id >= 0 and field in data[0]:
                     data[row_id][field] = new_value
-                    data[row_id]["Price"] = None  # Set Price to None to trigger recalculation
-
-    # Update Bond Prices (Recalculate prices for all bonds when rate editor is triggered or cell value changes)
-    if trigger in ["rate-editor.cellValueChanged", "offcanvas-rate-editor.is_open", "bond-table.cellValueChanged"]:
-        discount_data = (
-            "ZERO_RATES",
-            np.array([[rate["Year"], rate["Rate"] / 100] for rate in rate_data]),
-        )
-        dataset = {
-            "BASE": "USD",
-            "PRICING_TS": py_to_ts(datetime(2023, 12, 31)).value,
-            "ASSETS": {"USD": discount_data},
-        }
-        model = FixedModel()
-
-        # Recalculate prices for all bonds
+                    data[row_id]["Price"] = (
+                        None  # Set Price to None to trigger recalculation
+                    )
+    elif trigger == "rate-editor.cellValueChanged":
+        # Invalidate all prices when the rate data is updated
         for bond in data:
-            bond_obj, notional = bond_dict_to_obj(bond)
-            timetable = bond_obj.timetable()
-
-            price, _ = model.price(timetable, dataset)
-            bond["Price"] = f"${price * notional:.6f}"
+            bond["Price"] = None
 
     return data
 
 
-# Callback to update the table data
-@app.callback(Output("bond-table", "rowData"), Input("bond-store", "data"))
-def update_table(data):
+# Callback to update the grid data, when the bond data is updated
+@app.callback(
+    Output("bond-table", "rowData"),
+    Input("bond-store", "data"),
+    State("rate-editor", "rowData"),
+)
+def update_table(data, rate_data):
+    # Update the prices of the bonds that need to be recalculated
+    update_price(data, rate_data=rate_data)
     return data
 
 
