@@ -85,9 +85,13 @@ app.layout = html.Div(
         dbc.Offcanvas(
             AgGrid(
                 id="rate-editor",
-                rowData=[{"Year": 0.0, "Rate": 4.0}, {"Year": 5.0, "Rate": 4.0}],
+                rowData=[
+                    {"Year": 0.0, "Rate": 4.0},
+                    {"Year": 2.0, "Rate": 4.0},
+                    {"Year": 5.0, "Rate": 4.0},
+                ],
                 columnDefs=[
-                    numeric_cell("Year"),
+                    numeric_cell("Year", editable=False),
                     numeric_cell("Rate"),
                 ],
                 defaultColDef={

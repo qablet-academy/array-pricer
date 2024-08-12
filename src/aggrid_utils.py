@@ -12,11 +12,11 @@ def select_cell(field, values, width=100):
     }
 
 
-def numeric_cell(field, width=100):
+def numeric_cell(field, width=100, editable=True):
     return {
         "headerName": field,
         "field": field,
-        "editable": True,
+        "editable": editable,
         "type": "numericColumn",
         "cellEditor": "agNumberCellEditor",
         "width": width,
