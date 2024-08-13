@@ -187,6 +187,24 @@ def update_table(data, rate_data):
     update_price(data, rate_data=rate_data)
     return data
 
+# Callback to update the rate graph instantly when rates are edited
+@app.callback(
+    Output("rate-graph", "figure"),
+    Input("rate-editor", "cellValueChanged"),
+    State("rate-editor", "rowData"),
+)
+def update_rate_graph(_rate_change, rate_data):
+    rates_df = rates_table(rate_data)
+
+    # Plotting the graph
+    fig = px.line(rates_df, x='Time', y=['Term Rate', 'Fwd Rate'],
+                  labels={"value": "Rate", "variable": "Rate Type"},
+                  title="Term Rates and Forward Rates")
+
+    fig.update_layout(height=500)  # Adjust the height of the graph
+
+    return fig
+
 # Callback to show timetable in the off-canvas
 @app.callback(
     [Output("timetable-content", "children"), Output("offcanvas-timetable", "is_open")],
@@ -207,24 +225,13 @@ def show_timetable(menu_data, data):
 # Callback to handle Rate Editor Off-canvas
 @app.callback(
     Output("offcanvas-rate-editor", "is_open"),
-    [Output("rate-graph", "figure")],
     Input("rate-editor-button", "n_clicks"),
-    [State("offcanvas-rate-editor", "is_open"),
-     State("rate-editor", "rowData")],
+    [State("offcanvas-rate-editor", "is_open")],
 )
-def toggle_rate_editor(n_clicks, is_open, rate_data):
+def toggle_rate_editor(n_clicks, is_open):
     if n_clicks:
-        rates_df = rates_table(rate_data)
-
-        # Plotting the graph
-        fig = px.line(rates_df, x='Time', y=['Term Rate', 'Fwd Rate'],
-                      labels={"value": "Rate", "variable": "Rate Type"},
-                      title="Term Rates and Forward Rates")
-
-        fig.update_layout(height=300)  # Adjust the height of the graph
-
-        return not is_open, fig
-    return is_open, dash.no_update
+        return not is_open
+    return is_open
 
 if __name__ == "__main__":
     app.run_server(debug=True)
