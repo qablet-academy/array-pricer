@@ -1,9 +1,6 @@
-"""ArrayPricer for Bonds using AG Grid"""
-
-from enum import Enum
-
 import dash
 import dash_bootstrap_components as dbc
+import plotly.express as px
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
@@ -11,6 +8,9 @@ from dash_ag_grid import AgGrid
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
+from src.rates import rates_table
+
+from enum import Enum
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -19,17 +19,14 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-
 # Define the enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
-
 # Function to generate initial bond data
 def generate_initial_data():
     return [create_default_bond(index=1)]
-
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -83,39 +80,44 @@ app.layout = html.Div(
             backdrop=True,
         ),
         dbc.Offcanvas(
-            AgGrid(
-                id="rate-editor",
-                rowData=[
-                    {"Year": 0.0, "Rate": 4.0},
-                    {"Year": 2.0, "Rate": 4.0},
-                    {"Year": 5.0, "Rate": 4.0},
-                ],
-                columnDefs=[
-                    numeric_cell("Year", editable=False),
-                    numeric_cell("Rate"),
-                ],
-                defaultColDef={
-                    "sortable": True,
-                    "filter": True,
-                    "resizable": True,
-                    "editable": True,
-                },
-                dashGridOptions={
-                    "editable": True,
-                    "rowSelection": "single",
-                    "animateRows": True,
-                },
-                style={"height": "30vh", "width": "100%"},
+            html.Div(
+                [
+                    AgGrid(
+                        id="rate-editor",
+                        rowData=[
+                            {"Year": 0.0, "Rate": 4.0},
+                            {"Year": 2.0, "Rate": 4.0},
+                            {"Year": 5.0, "Rate": 4.0},
+                        ],
+                        columnDefs=[
+                            numeric_cell("Year", editable=False),
+                            numeric_cell("Rate"),
+                        ],
+                        defaultColDef={
+                            "sortable": True,
+                            "filter": True,
+                            "resizable": True,
+                            "editable": True,
+                        },
+                        dashGridOptions={
+                            "editable": True,
+                            "rowSelection": "single",
+                            "animateRows": True,
+                        },
+                        style={"height": "30vh", "width": "100%"},
+                    ),
+                    dcc.Graph(id="rate-graph"),
+                ]
             ),
             id="offcanvas-rate-editor",
             title="Rate Editor",
             is_open=False,
             placement="end",
             backdrop=True,
+            style={"width": "50%"},  # Adjust the width of the off-canvas here
         ),
     ]
 )
-
 
 # Combined callback to handle bond updates, additions, and deletions
 @app.callback(
@@ -174,7 +176,6 @@ def update_bond_data(
 
     return data
 
-
 # Callback to update the grid data, when the bond data is updated
 @app.callback(
     Output("bond-table", "rowData"),
@@ -185,7 +186,6 @@ def update_table(data, rate_data):
     # Update the prices of the bonds that need to be recalculated
     update_price(data, rate_data=rate_data)
     return data
-
 
 # Callback to show timetable in the off-canvas
 @app.callback(
@@ -204,18 +204,27 @@ def show_timetable(menu_data, data):
 
     return "", False
 
-
 # Callback to handle Rate Editor Off-canvas
 @app.callback(
     Output("offcanvas-rate-editor", "is_open"),
+    [Output("rate-graph", "figure")],
     Input("rate-editor-button", "n_clicks"),
-    [State("offcanvas-rate-editor", "is_open")],
+    [State("offcanvas-rate-editor", "is_open"),
+     State("rate-editor", "rowData")],
 )
-def toggle_rate_editor(n_clicks, is_open):
+def toggle_rate_editor(n_clicks, is_open, rate_data):
     if n_clicks:
-        return not is_open
-    return is_open
+        rates_df = rates_table(rate_data)
 
+        # Plotting the graph
+        fig = px.line(rates_df, x='Time', y=['Term Rate', 'Fwd Rate'],
+                      labels={"value": "Rate", "variable": "Rate Type"},
+                      title="Term Rates and Forward Rates")
+
+        fig.update_layout(height=300)  # Adjust the height of the graph
+
+        return not is_open, fig
+    return is_open, dash.no_update
 
 if __name__ == "__main__":
     app.run_server(debug=True)
