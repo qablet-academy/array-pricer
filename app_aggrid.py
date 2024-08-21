@@ -85,8 +85,7 @@ app.layout = html.Div(
                     AgGrid(
                         id="rate-editor",
                         rowData=[
-                            {"Year": 0.0, "Rate": 4.0},
-                            {"Year": 2.0, "Rate": 4.0},
+                            {"Year": 2.0, "Rate": 4.0},  # Removed Year 0
                             {"Year": 5.0, "Rate": 4.0},
                         ],
                         columnDefs=[
@@ -201,7 +200,20 @@ def update_rate_graph(_rate_change, rate_data):
                   labels={"value": "Rate", "variable": "Rate Type"},
                   title="Term Rates and Forward Rates")
 
-    fig.update_layout(height=500)  # Adjust the height of the graph
+    # Move the legend inside the graph and set the origin to zero
+    fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=0.99,
+            xanchor="right",
+            x=0.99,
+            bgcolor="rgba(255,255,255,0.5)"
+        ),
+        xaxis=dict(range=[0, rates_df['Time'].max()]),
+        yaxis=dict(range=[0, max(rates_df['Term Rate'].max(), rates_df['Fwd Rate'].max())]),
+        height=300  # Adjust the height of the graph
+    )
 
     return fig
 
