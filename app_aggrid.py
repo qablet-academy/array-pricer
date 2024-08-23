@@ -1,5 +1,3 @@
-"""ArrayPricer for Bonds using AG Grid"""
-
 from enum import Enum
 
 import dash
@@ -11,6 +9,7 @@ from dash_ag_grid import AgGrid
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
+from src.rates import plot_rates, rates_table
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -83,35 +82,41 @@ app.layout = html.Div(
             backdrop=True,
         ),
         dbc.Offcanvas(
-            AgGrid(
-                id="rate-editor",
-                rowData=[
-                    {"Year": 0.0, "Rate": 4.0},
-                    {"Year": 2.0, "Rate": 4.0},
-                    {"Year": 5.0, "Rate": 4.0},
-                ],
-                columnDefs=[
-                    numeric_cell("Year", editable=False),
-                    numeric_cell("Rate"),
-                ],
-                defaultColDef={
-                    "sortable": True,
-                    "filter": True,
-                    "resizable": True,
-                    "editable": True,
-                },
-                dashGridOptions={
-                    "editable": True,
-                    "rowSelection": "single",
-                    "animateRows": True,
-                },
-                style={"height": "30vh", "width": "100%"},
+            html.Div(
+                [
+                    AgGrid(
+                        id="rate-editor",
+                        rowData=[
+                            {"Year": 1.0, "Rate": 5.0},
+                            {"Year": 2.0, "Rate": 4.5},
+                            {"Year": 5.0, "Rate": 4.0},
+                        ],
+                        columnDefs=[
+                            numeric_cell("Year", editable=False),
+                            numeric_cell("Rate"),
+                        ],
+                        defaultColDef={
+                            "sortable": True,
+                            "filter": True,
+                            "resizable": True,
+                            "editable": True,
+                        },
+                        dashGridOptions={
+                            "editable": True,
+                            "rowSelection": "single",
+                            "animateRows": True,
+                        },
+                        style={"height": "20vh", "width": "100%"},
+                    ),
+                    dcc.Graph(id="rate-graph"),
+                ]
             ),
             id="offcanvas-rate-editor",
             title="Rate Editor",
             is_open=False,
             placement="end",
             backdrop=True,
+            style={"width": "30%"},  # Adjust the width of the off-canvas here
         ),
     ]
 )
@@ -185,6 +190,17 @@ def update_table(data, rate_data):
     # Update the prices of the bonds that need to be recalculated
     update_price(data, rate_data=rate_data)
     return data
+
+
+# Callback to update the rate graph instantly when rates are edited
+@app.callback(
+    Output("rate-graph", "figure"),
+    Input("rate-editor", "cellValueChanged"),
+    State("rate-editor", "rowData"),
+)
+def update_rate_graph(_rate_change, rate_data):
+    rates_df = rates_table(rate_data)
+    return plot_rates(rates_df)
 
 
 # Callback to show timetable in the off-canvas
