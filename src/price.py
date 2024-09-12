@@ -66,10 +66,6 @@ def update_price(data, rate_data):
         dv = (price_up - price_down) / (2 * shock_size)
 
         # 5. Calculate duration
-        duration = dv / price
+        duration = abs(dv / price)
         bond["Duration"] = f"{duration:.6f}"  # Add duration to the bond data
         
-        print(price_up * 100)
-        print(price_down * 100)
-        print(dv)
-        print(duration)
