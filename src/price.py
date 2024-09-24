@@ -18,7 +18,7 @@ def price_shocked(model, timetable, dataset_orig, shock):
 
 
 def update_price(data, rate_data):
-    """Update missing prices and calculate duration for all bonds in the table, in place."""
+    """Update missing prices and calculate duration and convexity for all bonds in the table, in place."""
 
     # Check if all bonds already have valid prices
     if all([item["Price"] for item in data]):
@@ -38,7 +38,7 @@ def update_price(data, rate_data):
     model = FixedModel()
     shock_size = 0.01  # 1% rate shock
 
-    # Recalculate prices and durations for all bonds
+    # Recalculate prices, durations, and convexity for all bonds
     for bond in data:
         if bond["Price"]:
             continue  # Skip bonds with existing prices
@@ -51,9 +51,14 @@ def update_price(data, rate_data):
         price, _ = model.price(timetable, dataset)
         bond["Price"] = f"${price * notional:.6f}"
 
+        # 2. Calculate price with shocks
         price_up = price_shocked(model, timetable, dataset, shock=shock_size)
         price_down = price_shocked(model, timetable, dataset, shock=-shock_size)
         dv = (price_up - price_down) / (2 * shock_size)
 
-        # 5. Calculate duration
+        # 3. Calculate duration
         bond["Duration"] = f"{-dv / price:.6f}"  # Add duration to the bond data
+
+        # 4. Calculate convexity
+        convexity = (price_up + price_down - 2 * price) / (shock_size * shock_size)
+        bond["Convexity"] = f"{convexity:.6f}"  # Add convexity to the bond data
