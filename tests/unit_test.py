@@ -1,11 +1,23 @@
 # test_app_callbacks.py
+"""
+unit test for testing single callbacks
 
+"""
 from contextvars import copy_context
 from dash._callback_context import context_value
 from dash._utils import AttributeDict
 from app_aggrid import update_bond_data, update_table
 
 def test_update_bond_data():
+
+    """
+    Test to simulate adding a bond via the "Add Bond" button.
+    
+    The function mocks the "add-bond-button.n_clicks" event and checks:
+    - Whether a new bond row is added to the data.
+    - Ensures that the second bond has the expected default name "Bond 2".
+    """
+    
     # Simulate an "add bond" click event
     initial_data = [{'Bond': 'Bond 1', 'Price': None}]
     def run_callback():
@@ -21,6 +33,15 @@ def test_update_bond_data():
 
 
 def test_rate_update():
+
+    """
+    Test to simulate rate updates and check bond price recalculation.
+
+    The function mocks a "rate-editor.cellValueChanged" event and checks:
+    - Whether the bond price is recalculated when the rates change.
+    - Ensures that the price field is updated after a rate change.
+    """
+
     # Mock rate update event with necessary bond fields
     initial_data = [{
         'Bond': 'Bond 1', 
@@ -43,6 +64,15 @@ def test_rate_update():
 
 
 def test_price_recalculation():
+
+    """
+    Test to simulate bond price and duration recalculations.
+
+    The function simulates a rate change event and checks:
+    - Whether both the bond price and duration are correctly recalculated.
+    - Ensures that both fields are updated in the bond data.
+    """
+    
     # Initial bond data with missing prices and necessary bond fields
     bond_data = [{
         'Bond': 'Bond 1', 

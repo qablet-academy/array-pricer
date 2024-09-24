@@ -1,3 +1,7 @@
+"""
+end to end tests for testing app , using selemium webdriver to simulate the app
+
+"""
 import time
 import pytest
 from dash.testing.application_runners import import_app
@@ -10,6 +14,12 @@ app = import_app("app_aggrid")
 
 def test_add_bond(dash_duo: DashComposite):
     dash_duo.start_server(app)
+
+    """
+    Test to verify that a new bond can be added to the bond pricing table.
+    The test clicks the 'Add Bond' button, waits for the new bond row to be added,
+    and verifies the row count after adding the bond.
+    """
 
     # Wait for the initial table to render
     dash_duo.wait_for_element("div.ag-row", timeout=10)
@@ -25,6 +35,12 @@ def test_add_bond(dash_duo: DashComposite):
     assert len(rows) == 2  # Assuming there's one bond initially and we added one more
 
 def test_update_bond_data(dash_duo: DashComposite):
+
+    """
+    Test to verify that bond data (Coupon) can be updated correctly.
+    The test activates the cell editor in the Coupon column, modifies the value,
+    and checks if the value is updated correctly in the grid.
+    """
     # Start the server with the bond pricing app
     dash_duo.start_server(app)
 
@@ -61,6 +77,13 @@ def test_update_bond_data(dash_duo: DashComposite):
 
 
 def test_delete_bond(dash_duo: DashComposite):
+
+    """
+    Test to verify that a bond can be deleted from the bond pricing table.
+    The test clicks the menu button of the first row, selects the delete option,
+    and verifies that the row is deleted.
+    """
+
     # Start the server with the bond pricing app
     dash_duo.start_server(app)
 
