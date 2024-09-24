@@ -3,11 +3,8 @@ end to end tests for testing app , using selemium webdriver to simulate the app
 
 """
 import time
-import pytest
 from dash.testing.application_runners import import_app
 from dash.testing.composite import DashComposite
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
 
 # Import the Dash app
 app = import_app("app_aggrid")
@@ -50,27 +47,20 @@ def test_update_bond_data(dash_duo: DashComposite):
     # Locate the Coupon cell in the first row
     coupon_cell = dash_duo.wait_for_element('div.ag-cell[col-id="Coupon"]', timeout=40)
 
-    # Double-click to activate the cell editor
-    action = ActionChains(dash_duo.driver)
-    action.double_click(coupon_cell).perform()
-
-    # Wait for the editor input to appear
-    time.sleep(2)  # Adjust this sleep time if necessary
-    input_element = dash_duo.driver.execute_script('return document.querySelector(".ag-popup-editor input");')
-
-    # Ensure the input element is not null
-    assert input_element is not None, "The input element should not be null."
-
-    # Clear the input and send new keys
-    dash_duo.driver.execute_script('arguments[0].value = "";', input_element)
-    input_element.send_keys('3.5')
+    coupon_cell.send_keys('3.5')
 
     # Press Enter to confirm the change
-    input_element.send_keys("\n")
+    coupon_cell.send_keys("\n")
 
     # Verify the update
     updated_cell_value = dash_duo.wait_for_element('div.ag-cell[col-id="Coupon"]').text
     assert updated_cell_value == '3.5', f"Expected '3.5', but got '{updated_cell_value}'"
+
+
+    dash_duo.wait_for_text_to_equal("div.ag-row:last-child .ag-cell[col-id='Price']", "$95.716682", timeout=10)
+
+    updated_price = dash_duo.wait_for_element('div.ag-cell[col-id="Price"]').text
+    print(updated_price)
 
     # Ensure no errors in the browser console
     assert dash_duo.get_logs() == [], "browser console should contain no errors"
@@ -91,7 +81,7 @@ def test_delete_bond(dash_duo: DashComposite):
     dash_duo.wait_for_element('div.ag-root-wrapper-body', timeout=40)
 
     # Locate the menu button in the first column of the first row
-    time.sleep(2)  # Adjust this sleep time if necessary
+    time.sleep(5)  # Adjust this sleep time if necessary
     menu_button = dash_duo.driver.execute_script(
         'return document.querySelector("div.ag-row:first-child div.ag-row-menu-button");'
     )

@@ -11,3 +11,4 @@ dash_bootstrap_templates
 dash_daq
 dash-ag-grid
 ruff
+selenium<=4.7.0
