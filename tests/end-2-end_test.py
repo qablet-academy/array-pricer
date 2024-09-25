@@ -80,28 +80,36 @@ def test_delete_bond(dash_duo: DashComposite):
     # Ensure the grid is fully rendered
     dash_duo.wait_for_element('div.ag-root-wrapper-body', timeout=40)
 
-    # Locate the menu button in the first column of the first row
-    time.sleep(5)  # Adjust this sleep time if necessary
+    # Wait for the first row (Bond 1) to be rendered
+    dash_duo.wait_for_text_to_equal('div.ag-row:first-child .ag-cell[col-id="Bond"]', 'Bond 1', timeout=10)
+
+    # Debug: Print the first row's HTML to check for the presence of the menu button
+    first_row_html = dash_duo.driver.execute_script('return document.querySelector("div.ag-row:first-child").outerHTML;')
+    #print("First row HTML:\n", first_row_html)
+
+    # Locate the menu button in the first column of the first row (assuming it’s the first cell)
+    time.sleep(2)  # Add a small delay to ensure everything is loaded
     menu_button = dash_duo.driver.execute_script(
-        'return document.querySelector("div.ag-row:first-child div.ag-row-menu-button");'
+        'return document.querySelector("div.ag-row:first-child .ag-cell[col-id=\'Menu\'] button");'
     )
 
     # Ensure the menu button is not null
     assert menu_button is not None, "The menu button should not be null."
 
-    # Click the menu button using JavaScript
+    # Click the menu button
     dash_duo.driver.execute_script("arguments[0].click();", menu_button)
 
-    # Wait for the delete button to appear and click it
-    delete_button = dash_duo.wait_for_element('button.ag-row-menu-delete', timeout=40)
+    # Wait for the delete button to appear and click it (assuming it's the first item in the menu)
+    dash_duo.wait_for_element(".MuiMenu-paper", timeout=10)
+    delete_button = dash_duo.find_elements(".MuiMenu-paper .MuiMenuItem-root")[0]
     delete_button.click()
 
     # Wait for the deletion to take effect
     time.sleep(3)
 
-    # Check if the bond is deleted
+    # Check if the bond is deleted by confirming there are no more rows
     rows = dash_duo.find_elements('div.ag-row')
-    assert len(rows) == 0, "The bond should be deleted, so no rows should be present"
+    assert len(rows) == 0, "The bond should be deleted, so no rows should be present."
 
     # Ensure no errors in the browser console
-    assert dash_duo.get_logs() == [], "browser console should contain no errors"
+    assert dash_duo.get_logs() == [], "browser console should contain no errors."
