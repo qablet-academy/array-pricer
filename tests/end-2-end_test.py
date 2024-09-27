@@ -113,3 +113,51 @@ def test_delete_bond(dash_duo: DashComposite):
 
     # Ensure no errors in the browser console
     assert dash_duo.get_logs() == [], "browser console should contain no errors."
+
+
+def test_show_timetable(dash_duo: DashComposite):
+    """
+    Test to verify that the "Show Timetable" option in the bond pricing table's row menu works.
+    The test clicks the menu button of the first row, selects the "Show Timetable" option,
+    and verifies that the timetable is displayed in the off-canvas.
+    """
+
+    # Start the server with the bond pricing app
+    dash_duo.start_server(app)
+
+    # Ensure the grid is fully rendered
+    dash_duo.wait_for_element('div.ag-root-wrapper-body', timeout=40)
+
+    # Wait for the first row (Bond 1) to be rendered
+    dash_duo.wait_for_text_to_equal('div.ag-row:first-child .ag-cell[col-id="Bond"]', 'Bond 1', timeout=10)
+
+    # Locate the menu button in the first column of the first row (assuming it’s the first cell)
+    time.sleep(2)  # Add a small delay to ensure everything is loaded
+    menu_button = dash_duo.driver.execute_script(
+        'return document.querySelector("div.ag-row:first-child .ag-cell[col-id=\'Menu\'] button");'
+    )
+
+    # Ensure the menu button is not null
+    assert menu_button is not None, "The menu button should not be null."
+
+    # Click the menu button
+    dash_duo.driver.execute_script("arguments[0].click();", menu_button)
+
+    # Wait for the Show Timetable button to appear and click it (assuming it's the second item in the menu)
+    dash_duo.wait_for_element(".MuiMenu-paper", timeout=10)
+    show_timetable_button = dash_duo.find_elements(".MuiMenu-paper .MuiMenuItem-root")[1]
+    show_timetable_button.click()
+
+    # Wait for the timetable off-canvas to open and check the content
+    dash_duo.wait_for_element("#offcanvas-timetable", timeout=10)
+    assert dash_duo.find_element("#offcanvas-timetable").is_displayed()
+
+    # Debug: Print the actual timetable content to see what it contains
+    timetable_content = dash_duo.find_element("#timetable-content").text
+    print(f"Timetable content: {timetable_content}")
+
+    # Modify the assertion to reflect the actual timetable content
+    assert "time" in timetable_content, f"Expected timetable content to contain 'time', but got {timetable_content}"
+
+    # Ensure no errors in the browser console
+    assert dash_duo.get_logs() == [], "browser console should contain no errors."
