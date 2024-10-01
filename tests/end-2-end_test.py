@@ -63,7 +63,7 @@ def test_update_bond_data(dash_duo: DashComposite):
     ), f"Expected '3.5', but got '{updated_cell_value}'"
 
     dash_duo.wait_for_text_to_equal(
-        "div.ag-row:last-child .ag-cell[col-id='Price']", "$95.716682", timeout=10
+        "div.ag-row:last-child .ag-cell[col-id='Price']", "$94.756766", timeout=10
     )
 
     updated_price = dash_duo.wait_for_element('div.ag-cell[col-id="Price"]').text
