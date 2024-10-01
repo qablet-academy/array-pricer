@@ -12,3 +12,4 @@ dash_daq
 dash-ag-grid
 ruff
 selenium<=4.7.0
+ruff
