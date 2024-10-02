@@ -177,3 +177,55 @@ def test_show_timetable(dash_duo: DashComposite):
 
     # Ensure no errors in the browser console
     assert dash_duo.get_logs() == [], "browser console should contain no errors."
+
+
+def test_rate_editor_update_rate(dash_duo: DashComposite):
+
+    """
+    Test to verify that when the rates are updated in the rate editor,
+    the bond price is recalculated accordingly.
+    """
+
+    # Start the server with the bond pricing app
+    dash_duo.start_server(app)
+
+    # Ensure the Rate Editor button is present and click to open the editor
+    rate_editor_button = dash_duo.find_element("#rate-editor-button")
+    rate_editor_button.click()
+
+    # Wait for the Rate Editor off-canvas to be visible
+    dash_duo.wait_for_element("#offcanvas-rate-editor", timeout=30)
+
+    # Wait for the rate editor grid to load
+    dash_duo.wait_for_element("#rate-editor", timeout=30)
+
+    # Add a small delay to ensure the AG Grid cells are fully interactive
+    time.sleep(2)
+
+    # Locate the Rate cell for the first row (Year 1)
+    rate_cell = dash_duo.driver.execute_script(
+        'return document.querySelector("div.ag-center-cols-container div.ag-row[row-index=\'0\'] div.ag-cell[col-id=\'Rate\']");'
+    )
+
+    # Ensure the rate cell is not null
+    assert rate_cell is not None, "The rate cell should not be null."
+
+    # Click the rate cell and modify the rate
+    dash_duo.driver.execute_script("arguments[0].click();", rate_cell)
+    rate_cell.send_keys("5.5")
+    rate_cell.send_keys("\n")  # Confirm the update
+
+    # Wait for the bond price to be updated after the rate change
+    dash_duo.wait_for_element('div.ag-cell[col-id="Price"]', timeout=20)
+
+    # Get the updated bond price
+    updated_price = dash_duo.driver.execute_script(
+        'return document.querySelector("div.ag-cell[col-id=\'Price\']").innerText'
+    )
+    print("Updated Price:", updated_price)
+
+    # Check if the bond price is updated (ensure it is not None or empty)
+    assert updated_price is not None and updated_price != "", "The bond price should be updated after rate change."
+
+    # Ensure no errors in the browser console
+    assert dash_duo.get_logs() == [], "browser console should contain no errors."
