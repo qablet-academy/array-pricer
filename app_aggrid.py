@@ -10,6 +10,8 @@ from src.price import update_price
 from src.rates import plot_rates, rates_table
 from datetime import datetime
 
+# Constant for default pricing date
+DEFAULT_PRICING_DATE = datetime(2023, 12, 31)
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -51,21 +53,21 @@ app.layout = html.Div(
         html.Button(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
         ),
+        dcc.DatePickerSingle(
+            id="pricing-datetime-picker",
+            date=DEFAULT_PRICING_DATE,  # Using the constant
+            display_format='YYYY-MM-DD',
+            style={"margin-top": "20px"},
+        ),
         html.Button(
             "Rate Editor",
             id="rate-editor-button",
             n_clicks=0,
             style={"margin-top": "20px"},
         ),
-        dcc.DatePickerSingle(
-            id="pricing-datetime-picker",
-            date=datetime(2023, 12, 31),  # Default value
-            display_format='YYYY-MM-DD',
-            style={"margin-top": "20px"},
-        ),
         AgGrid(
             id="bond-table",
-            rowData=generate_initial_data(datetime(2023, 12, 31)),
+            rowData=generate_initial_data(DEFAULT_PRICING_DATE),  # Using the constant
             columnDefs=column_defs,
             defaultColDef={
                 "sortable": True,
@@ -80,7 +82,7 @@ app.layout = html.Div(
             },
             style={"height": "80vh", "width": "100%"},
         ),
-        dcc.Store(id="bond-store", data=generate_initial_data(datetime(2023, 12, 31))),
+        dcc.Store(id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)),  # Using the constant
         dbc.Offcanvas(
             dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
