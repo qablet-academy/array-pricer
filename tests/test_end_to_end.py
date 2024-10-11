@@ -8,7 +8,7 @@ from dash.testing.application_runners import import_app
 from dash.testing.composite import DashComposite
 
 # Import the Dash app
-app = import_app("app_aggrid")
+app = import_app("app")
 
 
 def test_add_bond(dash_duo: DashComposite):

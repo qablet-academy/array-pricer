@@ -7,7 +7,7 @@ from contextvars import copy_context
 from dash._callback_context import context_value
 from dash._utils import AttributeDict
 
-from app_aggrid import show_timetable, update_bond_data, update_rate_graph, update_table
+from app import show_timetable, update_bond_data, update_rate_graph, update_table
 from src.bond import DEFAULT_MENU
 
 
