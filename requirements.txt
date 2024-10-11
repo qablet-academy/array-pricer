@@ -1,8 +1,7 @@
-dash
+dash[testing]
 dash-ag-grid
 dash_bootstrap_components
 dash_bootstrap_templates
-multiprocess
 numpy
 pandas
 psutil
