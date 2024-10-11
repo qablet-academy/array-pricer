@@ -12,13 +12,13 @@ app = import_app("app_aggrid")
 
 
 def test_add_bond(dash_duo: DashComposite):
-    dash_duo.start_server(app)
-
     """
     Test to verify that a new bond can be added to the bond pricing table.
     The test clicks the 'Add Bond' button, waits for the new bond row to be added,
     and verifies the row count after adding the bond.
     """
+
+    dash_duo.start_server(app)
 
     # Wait for the initial table to render
     dash_duo.wait_for_element("div.ag-row", timeout=10)
@@ -90,12 +90,6 @@ def test_delete_bond(dash_duo: DashComposite):
     dash_duo.wait_for_text_to_equal(
         'div.ag-row:first-child .ag-cell[col-id="Bond"]', "Bond 1", timeout=10
     )
-
-    # Debug: Print the first row's HTML to check for the presence of the menu button
-    first_row_html = dash_duo.driver.execute_script(
-        'return document.querySelector("div.ag-row:first-child").outerHTML;'
-    )
-    # print("First row HTML:\n", first_row_html)
 
     # Locate the menu button in the first column of the first row (assuming it’s the first cell)
     time.sleep(2)  # Add a small delay to ensure everything is loaded

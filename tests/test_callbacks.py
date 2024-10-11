@@ -8,6 +8,7 @@ from dash._callback_context import context_value
 from dash._utils import AttributeDict
 
 from app_aggrid import show_timetable, update_bond_data, update_rate_graph, update_table
+from src.bond import DEFAULT_MENU
 
 
 def test_update_bond_data():
@@ -22,10 +23,7 @@ def test_update_bond_data():
             "Frequency": 1,
             "Notional": 1000000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         }
     ]
     pricing_datetime = "2023-12-31"  # Updated pricing date
@@ -59,10 +57,7 @@ def test_rate_update():
             "Frequency": 1,
             "Notional": 1000000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         }
     ]
     pricing_datetime = "2023-12-31"  # Updated pricing date
@@ -96,10 +91,7 @@ def test_price_recalculation():
             "Frequency": 1,
             "Notional": 1000000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         }
     ]
 
@@ -131,10 +123,7 @@ def test_delete_bond():
             "Frequency": 1,
             "Notional": 1000000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         },
         {
             "Bond": "Bond 2",
@@ -145,10 +134,7 @@ def test_delete_bond():
             "Frequency": 1,
             "Notional": 500000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         },
     ]
     pricing_datetime = "2023-12-31"  # Pricing date
@@ -189,13 +175,9 @@ def test_show_timetable():
             "Frequency": 1,
             "Notional": 1000000,
             "Price": None,
-            "Menu": [
-                {"label": "Delete", "value": 1},
-                {"label": "Show Timetable", "value": 2},
-            ],
+            "Menu": DEFAULT_MENU,
         }
     ]
-    pricing_datetime = "2023-12-31"  # Pricing date
 
     # Simulate showing the timetable for the first bond
     def run_callback():
