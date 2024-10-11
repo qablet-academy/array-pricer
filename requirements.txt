@@ -4,6 +4,7 @@ dash_bootstrap_components
 dash_bootstrap_templates
 numpy
 pandas
+psutil
 pyarrow
 pytest
 qablet-basic==0.4.1
