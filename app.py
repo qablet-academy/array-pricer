@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 
 import dash
@@ -10,6 +11,9 @@ from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
 from src.rates import plot_rates, rates_table
+
+# Constant for default pricing date
+DEFAULT_PRICING_DATE = datetime(2023, 12, 31)
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -26,8 +30,8 @@ class MenuAction(Enum):
 
 
 # Function to generate initial bond data
-def generate_initial_data():
-    return [create_default_bond(index=1)]
+def generate_initial_data(pricing_datetime):
+    return [create_default_bond(index=1, pricing_datetime=pricing_datetime)]
 
 
 # Column definitions for AG Grid with the row menu column
@@ -41,8 +45,8 @@ column_defs = [
     numeric_cell("Frequency"),
     numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
-    {"headerName": "Duration", "field": "Duration", "editable": False, "width": 100},  # Added Duration column
-    {"headerName": "Convexity", "field": "Convexity", "editable": False, "width": 100},  # Added Convexity column
+    {"headerName": "Duration", "field": "Duration", "editable": False, "width": 100},
+    {"headerName": "Convexity", "field": "Convexity", "editable": False, "width": 100},
 ]
 
 # Layout of the app
@@ -50,6 +54,12 @@ app.layout = html.Div(
     [
         html.Button(
             "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
+        ),
+        dcc.DatePickerSingle(
+            id="pricing-datetime-picker",
+            date=DEFAULT_PRICING_DATE,  # Using the constant
+            display_format="YYYY-MM-DD",
+            style={"margin-top": "20px"},
         ),
         html.Button(
             "Rate Editor",
@@ -59,7 +69,7 @@ app.layout = html.Div(
         ),
         AgGrid(
             id="bond-table",
-            rowData=generate_initial_data(),
+            rowData=generate_initial_data(DEFAULT_PRICING_DATE),  # Using the constant
             columnDefs=column_defs,
             defaultColDef={
                 "sortable": True,
@@ -74,7 +84,9 @@ app.layout = html.Div(
             },
             style={"height": "80vh", "width": "100%"},
         ),
-        dcc.Store(id="bond-store", data=generate_initial_data()),
+        dcc.Store(
+            id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)
+        ),  # Using the constant
         dbc.Offcanvas(
             dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
@@ -132,6 +144,7 @@ app.layout = html.Div(
         Input("bond-table", "cellValueChanged"),
         Input("bond-table", "cellRendererData"),
         Input("rate-editor", "cellValueChanged"),
+        Input("pricing-datetime-picker", "date"),
     ],
     State("bond-store", "data"),
 )
@@ -140,6 +153,7 @@ def update_bond_data(
     cell_change,
     menu_data,
     _rate_change,
+    pricing_datetime,
     data,
 ):
     ctx = callback_context
@@ -152,7 +166,9 @@ def update_bond_data(
     # Handle Add Bond
     if trigger == "add-bond-button.n_clicks" and n_clicks_add > 0:
         new_index = len(data) + 1
-        new_bond = create_default_bond(index=new_index)
+        new_bond = create_default_bond(
+            index=new_index, pricing_datetime=datetime.fromisoformat(pricing_datetime)
+        )
         data.append(new_bond)
 
     # Handle Delete Bond from Row Menu
@@ -186,11 +202,16 @@ def update_bond_data(
 @app.callback(
     Output("bond-table", "rowData"),
     Input("bond-store", "data"),
+    Input("pricing-datetime-picker", "date"),
     State("rate-editor", "rowData"),
 )
-def update_table(data, rate_data):
+def update_table(data, pricing_datetime, rate_data):
     # Update the prices of the bonds that need to be recalculated
-    update_price(data, rate_data=rate_data)
+    update_price(
+        data,
+        rate_data=rate_data,
+        pricing_datetime=datetime.fromisoformat(pricing_datetime),
+    )
     return data
 
 

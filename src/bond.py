@@ -21,14 +21,17 @@ def bond_dict_to_obj(bond):
     return bond_obj, notional
 
 
-# Function to create a new bond with default values
-def create_default_bond(index):
+# Function to create a new bond with default values and pricing datetime
+def create_default_bond(index, pricing_datetime=None):
+    if pricing_datetime is None:
+        pricing_datetime = datetime.today()
+
     return {
         "Bond": f"Bond {index}",
         "Currency": "USD",
         "Coupon": 2.5,
-        "Accrual Start": datetime.today().strftime("%Y-%m-%d"),
-        "Maturity": (datetime.today() + timedelta(days=365)).strftime("%Y-%m-%d"),
+        "Accrual Start": pricing_datetime.strftime("%Y-%m-%d"),
+        "Maturity": (pricing_datetime + timedelta(days=365)).strftime("%Y-%m-%d"),
         "Frequency": 1,
         "Notional": 100,
         "Price": "",
