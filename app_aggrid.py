@@ -46,12 +46,7 @@ column_defs = [
     numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
     {"headerName": "Duration", "field": "Duration", "editable": False, "width": 100},
-    {
-        "headerName": "Convexity",
-        "field": "Convexity",
-        "editable": False,
-        "width": 100,
-    },  # Added Convexity column
+    {"headerName": "Convexity", "field": "Convexity", "editable": False, "width": 100},
 ]
 
 # Layout of the app
