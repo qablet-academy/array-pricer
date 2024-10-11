@@ -1,9 +1,11 @@
+import copy
 from datetime import datetime
+
 import numpy as np
 from qablet.base.fixed import FixedModel
 from qablet_contracts.timetable import py_to_ts
+
 from src.bond import bond_dict_to_obj
-import copy
 
 
 def price_shocked(model, timetable, dataset_orig, shock):
@@ -59,5 +61,5 @@ def update_price(data, rate_data, pricing_datetime):
         bond["Duration"] = f"{-dv / price:.6f}"
 
         # Calculate convexity
-        convexity = (price_up + price_down - 2 * price) / (shock_size ** 2)
+        convexity = (price_up + price_down - 2 * price) / (shock_size**2)
         bond["Convexity"] = f"{convexity:.6f}"

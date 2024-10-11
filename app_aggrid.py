@@ -1,14 +1,16 @@
+from datetime import datetime
 from enum import Enum
+
 import dash
 import dash_bootstrap_components as dbc
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
+
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
 from src.rates import plot_rates, rates_table
-from datetime import datetime
 
 # Constant for default pricing date
 DEFAULT_PRICING_DATE = datetime(2023, 12, 31)
@@ -44,7 +46,12 @@ column_defs = [
     numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
     {"headerName": "Duration", "field": "Duration", "editable": False, "width": 100},
-    {"headerName": "Convexity", "field": "Convexity", "editable": False, "width": 100},  # Added Convexity column
+    {
+        "headerName": "Convexity",
+        "field": "Convexity",
+        "editable": False,
+        "width": 100,
+    },  # Added Convexity column
 ]
 
 # Layout of the app
@@ -56,7 +63,7 @@ app.layout = html.Div(
         dcc.DatePickerSingle(
             id="pricing-datetime-picker",
             date=DEFAULT_PRICING_DATE,  # Using the constant
-            display_format='YYYY-MM-DD',
+            display_format="YYYY-MM-DD",
             style={"margin-top": "20px"},
         ),
         html.Button(
@@ -82,7 +89,9 @@ app.layout = html.Div(
             },
             style={"height": "80vh", "width": "100%"},
         ),
-        dcc.Store(id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)),  # Using the constant
+        dcc.Store(
+            id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)
+        ),  # Using the constant
         dbc.Offcanvas(
             dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
@@ -140,7 +149,7 @@ app.layout = html.Div(
         Input("bond-table", "cellValueChanged"),
         Input("bond-table", "cellRendererData"),
         Input("rate-editor", "cellValueChanged"),
-        Input("pricing-datetime-picker", "date")
+        Input("pricing-datetime-picker", "date"),
     ],
     State("bond-store", "data"),
 )
@@ -162,7 +171,9 @@ def update_bond_data(
     # Handle Add Bond
     if trigger == "add-bond-button.n_clicks" and n_clicks_add > 0:
         new_index = len(data) + 1
-        new_bond = create_default_bond(index=new_index, pricing_datetime=datetime.fromisoformat(pricing_datetime))
+        new_bond = create_default_bond(
+            index=new_index, pricing_datetime=datetime.fromisoformat(pricing_datetime)
+        )
         data.append(new_bond)
 
     # Handle Delete Bond from Row Menu
@@ -201,7 +212,11 @@ def update_bond_data(
 )
 def update_table(data, pricing_datetime, rate_data):
     # Update the prices of the bonds that need to be recalculated
-    update_price(data, rate_data=rate_data, pricing_datetime=datetime.fromisoformat(pricing_datetime))
+    update_price(
+        data,
+        rate_data=rate_data,
+        pricing_datetime=datetime.fromisoformat(pricing_datetime),
+    )
     return data
 
 

@@ -1,9 +1,9 @@
 """
-end to end tests for testing app , using selemium webdriver to simulate the app
-
+End to end tests for testing app , using selemium webdriver to simulate the app.
 """
 
 import time
+
 from dash.testing.application_runners import import_app
 from dash.testing.composite import DashComposite
 
@@ -180,7 +180,6 @@ def test_show_timetable(dash_duo: DashComposite):
 
 
 def test_rate_editor_update_rate(dash_duo: DashComposite):
-
     """
     Test to verify that when the rates are updated in the rate editor,
     the bond price is recalculated accordingly.
@@ -204,7 +203,7 @@ def test_rate_editor_update_rate(dash_duo: DashComposite):
 
     # Locate the Rate cell for the first row (Year 1)
     rate_cell = dash_duo.driver.execute_script(
-        'return document.querySelector("div.ag-center-cols-container div.ag-row[row-index=\'0\'] div.ag-cell[col-id=\'Rate\']");'
+        "return document.querySelector(\"div.ag-center-cols-container div.ag-row[row-index='0'] div.ag-cell[col-id='Rate']\");"
     )
 
     # Ensure the rate cell is not null
@@ -220,12 +219,14 @@ def test_rate_editor_update_rate(dash_duo: DashComposite):
 
     # Get the updated bond price
     updated_price = dash_duo.driver.execute_script(
-        'return document.querySelector("div.ag-cell[col-id=\'Price\']").innerText'
+        "return document.querySelector(\"div.ag-cell[col-id='Price']\").innerText"
     )
     print("Updated Price:", updated_price)
 
     # Check if the bond price is updated (ensure it is not None or empty)
-    assert updated_price is not None and updated_price != "", "The bond price should be updated after rate change."
+    assert (
+        updated_price is not None and updated_price != ""
+    ), "The bond price should be updated after rate change."
 
     # Ensure no errors in the browser console
     assert dash_duo.get_logs() == [], "browser console should contain no errors."
