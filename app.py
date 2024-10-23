@@ -12,8 +12,23 @@ from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
 from src.rates import plot_rates, rates_table
 
-# Constant for default pricing date
-DEFAULT_PRICING_DATE = datetime(2023, 12, 31)
+# Default pricing date and rates
+DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
+DEFAULT_RATE_DATA = [
+    {"Year": 1/12, "Rate": 5.55},
+    {"Year": 2/12, "Rate": 5.54},
+    {"Year": 3/12, "Rate": 5.46},
+    {"Year": 4/12, "Rate": 5.41},
+    {"Year": 6/12, "Rate": 5.24},
+    {"Year": 1.0, "Rate": 4.80},
+    {"Year": 2.0, "Rate": 4.33},
+    {"Year": 3.0, "Rate": 4.09},
+    {"Year": 5.0, "Rate": 3.93},
+    {"Year": 7.0, "Rate": 3.95},
+    {"Year": 10.0, "Rate": 3.95},
+    {"Year": 20.0, "Rate": 4.25},
+    {"Year": 30.0, "Rate": 4.08},
+]
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -22,17 +37,14 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-
 # Define the enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
-
 # Function to generate initial bond data
 def generate_initial_data(pricing_datetime):
     return [create_default_bond(index=1, pricing_datetime=pricing_datetime)]
-
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -57,7 +69,7 @@ app.layout = html.Div(
         ),
         dcc.DatePickerSingle(
             id="pricing-datetime-picker",
-            date=DEFAULT_PRICING_DATE,  # Using the constant
+            date=DEFAULT_PRICING_DATE,  # Default date
             display_format="YYYY-MM-DD",
             style={"margin-top": "20px"},
         ),
@@ -69,7 +81,7 @@ app.layout = html.Div(
         ),
         AgGrid(
             id="bond-table",
-            rowData=generate_initial_data(DEFAULT_PRICING_DATE),  # Using the constant
+            rowData=generate_initial_data(DEFAULT_PRICING_DATE),
             columnDefs=column_defs,
             defaultColDef={
                 "sortable": True,
@@ -84,9 +96,7 @@ app.layout = html.Div(
             },
             style={"height": "80vh", "width": "100%"},
         ),
-        dcc.Store(
-            id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)
-        ),  # Using the constant
+        dcc.Store(id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)),
         dbc.Offcanvas(
             dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
@@ -100,11 +110,7 @@ app.layout = html.Div(
                 [
                     AgGrid(
                         id="rate-editor",
-                        rowData=[
-                            {"Year": 1.0, "Rate": 5.0},
-                            {"Year": 2.0, "Rate": 4.5},
-                            {"Year": 5.0, "Rate": 4.0},
-                        ],
+                        rowData=DEFAULT_RATE_DATA,  # Default rates
                         columnDefs=[
                             numeric_cell("Year", editable=False),
                             numeric_cell("Rate"),
@@ -135,8 +141,7 @@ app.layout = html.Div(
     ]
 )
 
-
-# Combined callback to handle bond updates, additions, and deletions
+# Callback to handle bond updates, additions, and deletions
 @app.callback(
     Output("bond-store", "data"),
     [
@@ -197,7 +202,6 @@ def update_bond_data(
 
     return data
 
-
 # Callback to update the grid data, when the bond data is updated
 @app.callback(
     Output("bond-table", "rowData"),
@@ -214,7 +218,6 @@ def update_table(data, pricing_datetime, rate_data):
     )
     return data
 
-
 # Callback to update the rate graph instantly when rates are edited
 @app.callback(
     Output("rate-graph", "figure"),
@@ -224,7 +227,6 @@ def update_table(data, pricing_datetime, rate_data):
 def update_rate_graph(_rate_change, rate_data):
     rates_df = rates_table(rate_data)
     return plot_rates(rates_df)
-
 
 # Callback to show timetable in the off-canvas
 @app.callback(
@@ -242,7 +244,6 @@ def show_timetable(menu_data, data):
             return full_text, True
 
     return "", False
-
 
 # Callback to handle Rate Editor Off-canvas
 @app.callback(
