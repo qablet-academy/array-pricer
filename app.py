@@ -1,33 +1,31 @@
 from datetime import datetime
 from enum import Enum
-
 import dash
 import dash_bootstrap_components as dbc
 from dash import callback_context, dcc, html
 from dash.dependencies import Input, Output, State
 from dash_ag_grid import AgGrid
-
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
-from src.rates import plot_rates, rates_table
+from src.rates import get_rates_for_date, plot_rates, rates_table
 
-# Default pricing date and rates
+# Constant for default pricing date and default rate data
 DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
 DEFAULT_RATE_DATA = [
-    {"Year": 1/12, "Rate": 5.55},
-    {"Year": 2/12, "Rate": 5.54},
-    {"Year": 3/12, "Rate": 5.46},
-    {"Year": 4/12, "Rate": 5.41},
-    {"Year": 6/12, "Rate": 5.24},
-    {"Year": 1.0, "Rate": 4.80},
-    {"Year": 2.0, "Rate": 4.33},
-    {"Year": 3.0, "Rate": 4.09},
-    {"Year": 5.0, "Rate": 3.93},
-    {"Year": 7.0, "Rate": 3.95},
-    {"Year": 10.0, "Rate": 3.95},
-    {"Year": 20.0, "Rate": 4.25},
-    {"Year": 30.0, "Rate": 4.08},
+    {"Year": 1 / 12, "Rate": 5.55},
+    {"Year": 2 / 12, "Rate": 5.54},
+    {"Year": 3 / 12, "Rate": 5.46},
+    {"Year": 4 / 12, "Rate": 5.41},
+    {"Year": 6 / 12, "Rate": 5.24},
+    {"Year": 1, "Rate": 4.80},
+    {"Year": 2, "Rate": 4.33},
+    {"Year": 3, "Rate": 4.09},
+    {"Year": 5, "Rate": 3.93},
+    {"Year": 7, "Rate": 3.95},
+    {"Year": 10, "Rate": 3.95},
+    {"Year": 20, "Rate": 4.25},
+    {"Year": 30, "Rate": 4.08},
 ]
 
 # Initialize the Dash app
@@ -37,7 +35,7 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-# Define the enum for menu actions
+# Enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
@@ -64,36 +62,20 @@ column_defs = [
 # Layout of the app
 app.layout = html.Div(
     [
-        html.Button(
-            "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
-        ),
+        html.Button("Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}),
         dcc.DatePickerSingle(
             id="pricing-datetime-picker",
-            date=DEFAULT_PRICING_DATE,  # Default date
+            date=DEFAULT_PRICING_DATE,
             display_format="YYYY-MM-DD",
             style={"margin-top": "20px"},
         ),
-        html.Button(
-            "Rate Editor",
-            id="rate-editor-button",
-            n_clicks=0,
-            style={"margin-top": "20px"},
-        ),
+        html.Button("Rate Editor", id="rate-editor-button", n_clicks=0, style={"margin-top": "20px"}),
         AgGrid(
             id="bond-table",
             rowData=generate_initial_data(DEFAULT_PRICING_DATE),
             columnDefs=column_defs,
-            defaultColDef={
-                "sortable": True,
-                "filter": True,
-                "resizable": True,
-                "editable": True,
-            },
-            dashGridOptions={
-                "editable": True,
-                "rowSelection": "single",
-                "animateRows": True,
-            },
+            defaultColDef={"sortable": True, "filter": True, "resizable": True, "editable": True},
+            dashGridOptions={"editable": True, "rowSelection": "single", "animateRows": True},
             style={"height": "80vh", "width": "100%"},
         ),
         dcc.Store(id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)),
@@ -110,22 +92,10 @@ app.layout = html.Div(
                 [
                     AgGrid(
                         id="rate-editor",
-                        rowData=DEFAULT_RATE_DATA,  # Default rates
-                        columnDefs=[
-                            numeric_cell("Year", editable=False),
-                            numeric_cell("Rate"),
-                        ],
-                        defaultColDef={
-                            "sortable": True,
-                            "filter": True,
-                            "resizable": True,
-                            "editable": True,
-                        },
-                        dashGridOptions={
-                            "editable": True,
-                            "rowSelection": "single",
-                            "animateRows": True,
-                        },
+                        rowData=DEFAULT_RATE_DATA,
+                        columnDefs=[numeric_cell("Year", editable=False), numeric_cell("Rate")],
+                        defaultColDef={"sortable": True, "filter": True, "resizable": True, "editable": True},
+                        dashGridOptions={"editable": True, "rowSelection": "single", "animateRows": True},
                         style={"height": "20vh", "width": "100%"},
                     ),
                     dcc.Graph(id="rate-graph"),
@@ -136,12 +106,12 @@ app.layout = html.Div(
             is_open=False,
             placement="end",
             backdrop=True,
-            style={"width": "30%"},  # Adjust the width of the off-canvas here
+            style={"width": "30%"},
         ),
     ]
 )
 
-# Callback to handle bond updates, additions, and deletions
+# Callback to update the bond store data
 @app.callback(
     Output("bond-store", "data"),
     [
@@ -153,14 +123,7 @@ app.layout = html.Div(
     ],
     State("bond-store", "data"),
 )
-def update_bond_data(
-    n_clicks_add,
-    cell_change,
-    menu_data,
-    _rate_change,
-    pricing_datetime,
-    data,
-):
+def update_bond_data(n_clicks_add, cell_change, menu_data, _rate_change, pricing_datetime, data):
     ctx = callback_context
 
     if not ctx.triggered:
@@ -192,9 +155,8 @@ def update_bond_data(
                 new_value = change.get("value", "")
                 if row_id >= 0 and field in data[0]:
                     data[row_id][field] = new_value
-                    data[row_id]["Price"] = (
-                        None  # Set Price to None to trigger recalculation
-                    )
+                    data[row_id]["Price"] = None  # Set Price to None to trigger recalculation
+
     elif trigger == "rate-editor.cellValueChanged":
         # Invalidate all prices when the rate data is updated
         for bond in data:
@@ -202,7 +164,7 @@ def update_bond_data(
 
     return data
 
-# Callback to update the grid data, when the bond data is updated
+# Callback to update the bond table data
 @app.callback(
     Output("bond-table", "rowData"),
     Input("bond-store", "data"),
@@ -210,13 +172,19 @@ def update_bond_data(
     State("rate-editor", "rowData"),
 )
 def update_table(data, pricing_datetime, rate_data):
-    # Update the prices of the bonds that need to be recalculated
-    update_price(
-        data,
-        rate_data=rate_data,
-        pricing_datetime=datetime.fromisoformat(pricing_datetime),
-    )
+    update_price(data, rate_data=rate_data, pricing_datetime=datetime.fromisoformat(pricing_datetime))
     return data
+
+# Callback to update the rate editor data dynamically based on the selected pricing date
+@app.callback(
+    Output("rate-editor", "rowData"),
+    Input("pricing-datetime-picker", "date"),
+)
+def update_rate_editor_data(pricing_datetime):
+    if pricing_datetime is None:
+        pricing_datetime = DEFAULT_PRICING_DATE
+    rate_data = get_rates_for_date(pricing_datetime)
+    return rate_data
 
 # Callback to update the rate graph instantly when rates are edited
 @app.callback(
@@ -239,7 +207,6 @@ def show_timetable(menu_data, data):
         row_index = menu_data.get("rowIndex", -1)
         if row_index >= 0 and row_index < len(data):
             bond_obj, _ = bond_dict_to_obj(data[row_index])
-
             full_text = f"```\n{bond_obj.to_string()}\n```"
             return full_text, True
 
@@ -255,7 +222,6 @@ def toggle_rate_editor(n_clicks, is_open):
     if n_clicks:
         return not is_open
     return is_open
-
 
 if __name__ == "__main__":
     app.run_server(debug=True)

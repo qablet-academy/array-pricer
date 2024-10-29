@@ -1,23 +1,30 @@
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import datetime
 from qablet.base.utils import Discounter
 
-# Function to fetch the rates dynamically from the Treasury website using a CSV URL
+# CSV URL for fetching Treasury rates
+CSV_URL = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2024/all?type=daily_treasury_yield_curve&field_tdr_date_value=2024&page&_format=csv"
+
+# Function to fetch Treasury rates from the Treasury website
 def fetch_treasury_rates():
-    csv_url = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2024/all?type=daily_treasury_yield_curve&field_tdr_date_value=2024&page&_format=csv"
-    df = pd.read_csv(csv_url)
+    df = pd.read_csv(CSV_URL)
+    df['Date'] = pd.to_datetime(df['Date'])
     return df
 
-# Helper function to get the rates for a specific pricing date
+# Function to get rates for a specific pricing date
 def get_rates_for_date(pricing_datetime):
-    df = fetch_treasury_rates()
-    # Convert date column to datetime and filter for the closest available date
-    df['Date'] = pd.to_datetime(df['Date'])
-    closest_date = df.iloc[(df['Date'] - pricing_datetime).abs().argsort()[:1]]
-    return closest_date
+    # Convert pricing_datetime to datetime if it's a string
+    if isinstance(pricing_datetime, str):
+        pricing_datetime = datetime.fromisoformat(pricing_datetime)
 
-# Function to convert the Treasury yield curve rates into a usable format for pricing
+    df = fetch_treasury_rates()
+    # Find the row with the closest date to the provided pricing_datetime
+    closest_date_row = df.iloc[(df['Date'] - pricing_datetime).abs().argsort()[:1]]
+    return treasury_rates_to_rate_data(closest_date_row)
+
+# Function to format Treasury yield curve data for the app's rate editor
 def treasury_rates_to_rate_data(df_row):
     return [
         {"Year": 1 / 12, "Rate": df_row['1 Mo'].values[0]},
@@ -35,7 +42,7 @@ def treasury_rates_to_rate_data(df_row):
         {"Year": 30.0, "Rate": df_row['30 Yr'].values[0]},
     ]
 
-# Function to calculate the rates for plotting and pricing
+# Function to process rates for calculations in pricing and plotting
 def rates_table(rate_data):
     discount_data = (
         "ZERO_RATES",
@@ -52,9 +59,9 @@ def rates_table(rate_data):
 
     return pd.DataFrame({"Time": ends, "Term Rate": term_rates, "Fwd Rate": fwd_rates})
 
-# Function to plot the rates
+# Function to plot the rates using Plotly
 def plot_rates(rates_df):
-    # Create traces
+    # Create traces for term rate and forward rate
     term_rate_trace = go.Scatter(
         x=rates_df["Time"],
         y=rates_df["Term Rate"],
@@ -71,10 +78,9 @@ def plot_rates(rates_df):
         line=dict(shape="vh"),
     )
 
-    # Create the figure
+    # Create the figure with a custom layout
     fig = go.Figure(data=[term_rate_trace, fwd_rate_trace])
 
-    # Move the legend inside the graph and set the origin to zero
     fig.update_layout(
         legend=dict(
             orientation="h",
@@ -92,7 +98,7 @@ def plot_rates(rates_df):
             ],
             tickformat=".2%",
         ),
-        height=300,  # Adjust the height of the graph
+        height=300,
     )
 
     return fig
