@@ -31,7 +31,9 @@ def create_default_bond(index, pricing_datetime=None):
         "Currency": "USD",
         "Coupon": 2.5,
         "Accrual Start": pricing_datetime.strftime("%Y-%m-%d"),
-        "Maturity": (pricing_datetime + timedelta(days=365)).strftime("%Y-%m-%d"),
+        "Maturity": (pricing_datetime + timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        ),
         "Frequency": 1,
         "Notional": 100,
         "Price": "",

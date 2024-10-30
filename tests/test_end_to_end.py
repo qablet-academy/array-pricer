@@ -33,7 +33,9 @@ def test_add_bond(dash_duo: DashComposite):
 
     # Check if a new bond row is added
     rows = dash_duo.find_elements("div.ag-row")
-    assert len(rows) == 2  # Assuming there's one bond initially and we added one more
+    assert (
+        len(rows) == 2
+    )  # Assuming there's one bond initially and we added one more
 
 
 def test_update_bond_data(dash_duo: DashComposite):
@@ -49,7 +51,9 @@ def test_update_bond_data(dash_duo: DashComposite):
     dash_duo.wait_for_element("div.ag-root-wrapper-body", timeout=40)
 
     # Locate the Coupon cell in the first row
-    coupon_cell = dash_duo.wait_for_element('div.ag-cell[col-id="Coupon"]', timeout=40)
+    coupon_cell = dash_duo.wait_for_element(
+        'div.ag-cell[col-id="Coupon"]', timeout=40
+    )
 
     coupon_cell.send_keys("3.5")
 
@@ -57,20 +61,28 @@ def test_update_bond_data(dash_duo: DashComposite):
     coupon_cell.send_keys("\n")
 
     # Verify the update
-    updated_cell_value = dash_duo.wait_for_element('div.ag-cell[col-id="Coupon"]').text
+    updated_cell_value = dash_duo.wait_for_element(
+        'div.ag-cell[col-id="Coupon"]'
+    ).text
     assert (
         updated_cell_value == "3.5"
     ), f"Expected '3.5', but got '{updated_cell_value}'"
 
     dash_duo.wait_for_text_to_equal(
-        "div.ag-row:last-child .ag-cell[col-id='Price']", "$97.854824", timeout=10
+        "div.ag-row:last-child .ag-cell[col-id='Price']",
+        "$97.854824",
+        timeout=10,
     )
 
-    updated_price = dash_duo.wait_for_element('div.ag-cell[col-id="Price"]').text
+    updated_price = dash_duo.wait_for_element(
+        'div.ag-cell[col-id="Price"]'
+    ).text
     print(updated_price)
 
     # Ensure no errors in the browser console
-    assert dash_duo.get_logs() == [], "browser console should contain no errors"
+    assert (
+        dash_duo.get_logs() == []
+    ), "browser console should contain no errors"
 
 
 def test_delete_bond(dash_duo: DashComposite):
@@ -105,7 +117,9 @@ def test_delete_bond(dash_duo: DashComposite):
 
     # Wait for the delete button to appear and click it (assuming it's the first item in the menu)
     dash_duo.wait_for_element(".MuiMenu-paper", timeout=10)
-    delete_button = dash_duo.find_elements(".MuiMenu-paper .MuiMenuItem-root")[0]
+    delete_button = dash_duo.find_elements(".MuiMenu-paper .MuiMenuItem-root")[
+        0
+    ]
     delete_button.click()
 
     # Wait for the deletion to take effect
@@ -113,10 +127,14 @@ def test_delete_bond(dash_duo: DashComposite):
 
     # Check if the bond is deleted by confirming there are no more rows
     rows = dash_duo.find_elements("div.ag-row")
-    assert len(rows) == 0, "The bond should be deleted, so no rows should be present."
+    assert (
+        len(rows) == 0
+    ), "The bond should be deleted, so no rows should be present."
 
     # Ensure no errors in the browser console
-    assert dash_duo.get_logs() == [], "browser console should contain no errors."
+    assert (
+        dash_duo.get_logs() == []
+    ), "browser console should contain no errors."
 
 
 def test_show_timetable(dash_duo: DashComposite):
@@ -151,9 +169,9 @@ def test_show_timetable(dash_duo: DashComposite):
 
     # Wait for the Show Timetable button to appear and click it (assuming it's the second item in the menu)
     dash_duo.wait_for_element(".MuiMenu-paper", timeout=10)
-    show_timetable_button = dash_duo.find_elements(".MuiMenu-paper .MuiMenuItem-root")[
-        1
-    ]
+    show_timetable_button = dash_duo.find_elements(
+        ".MuiMenu-paper .MuiMenuItem-root"
+    )[1]
     show_timetable_button.click()
 
     # Wait for the timetable off-canvas to open and check the content
@@ -170,7 +188,9 @@ def test_show_timetable(dash_duo: DashComposite):
     ), f"Expected timetable content to contain 'time', but got {timetable_content}"
 
     # Ensure no errors in the browser console
-    assert dash_duo.get_logs() == [], "browser console should contain no errors."
+    assert (
+        dash_duo.get_logs() == []
+    ), "browser console should contain no errors."
 
 
 def test_rate_editor_update_rate(dash_duo: DashComposite):
@@ -223,4 +243,6 @@ def test_rate_editor_update_rate(dash_duo: DashComposite):
     ), "The bond price should be updated after rate change."
 
     # Ensure no errors in the browser console
-    assert dash_duo.get_logs() == [], "browser console should contain no errors."
+    assert (
+        dash_duo.get_logs() == []
+    ), "browser console should contain no errors."

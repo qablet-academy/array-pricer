@@ -7,7 +7,12 @@ from contextvars import copy_context
 from dash._callback_context import context_value
 from dash._utils import AttributeDict
 
-from app import show_timetable, update_bond_data, update_rate_graph, update_table
+from app import (
+    show_timetable,
+    update_bond_data,
+    update_rate_graph,
+    update_table,
+)
 from src.bond import DEFAULT_MENU
 
 
@@ -32,10 +37,16 @@ def test_update_bond_data():
     def run_callback():
         context_value.set(
             AttributeDict(
-                **{"triggered_inputs": [{"prop_id": "add-bond-button.n_clicks"}]}
+                **{
+                    "triggered_inputs": [
+                        {"prop_id": "add-bond-button.n_clicks"}
+                    ]
+                }
             )
         )
-        return update_bond_data(1, None, None, None, pricing_datetime, initial_data)
+        return update_bond_data(
+            1, None, None, None, pricing_datetime, initial_data
+        )
 
     ctx = copy_context()
     updated_data = ctx.run(run_callback)
@@ -67,7 +78,11 @@ def test_rate_update():
     def run_callback():
         context_value.set(
             AttributeDict(
-                **{"triggered_inputs": [{"prop_id": "rate-editor.cellValueChanged"}]}
+                **{
+                    "triggered_inputs": [
+                        {"prop_id": "rate-editor.cellValueChanged"}
+                    ]
+                }
             )
         )
         return update_table(initial_data, pricing_datetime, mock_rate_data)
@@ -143,7 +158,11 @@ def test_delete_bond():
     def run_callback():
         context_value.set(
             AttributeDict(
-                **{"triggered_inputs": [{"prop_id": "bond-table.cellRendererData"}]}
+                **{
+                    "triggered_inputs": [
+                        {"prop_id": "bond-table.cellRendererData"}
+                    ]
+                }
             )
         )
         return update_bond_data(
@@ -183,7 +202,11 @@ def test_show_timetable():
     def run_callback():
         context_value.set(
             AttributeDict(
-                **{"triggered_inputs": [{"prop_id": "bond-table.cellRendererData"}]}
+                **{
+                    "triggered_inputs": [
+                        {"prop_id": "bond-table.cellRendererData"}
+                    ]
+                }
             )
         )
         return show_timetable({"value": 2, "rowIndex": 0}, initial_data)
