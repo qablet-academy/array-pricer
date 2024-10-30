@@ -10,10 +10,13 @@ from dash_ag_grid import AgGrid
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
-from src.rates import plot_rates, rates_table
+from src.rates import get_rates_for_date, plot_rates, rates_table
 
 # Constant for default pricing date
-DEFAULT_PRICING_DATE = datetime(2023, 12, 31)
+DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
+
+# Fetch default rate data dynamically for the default pricing date
+DEFAULT_RATE_DATA = get_rates_for_date(DEFAULT_PRICING_DATE)
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -23,7 +26,7 @@ app = dash.Dash(
 )
 
 
-# Define the enum for menu actions
+# Enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
@@ -36,7 +39,12 @@ def generate_initial_data(pricing_datetime):
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
-    {"headerName": "...", "field": "Menu", "cellRenderer": "rowMenu", "width": 100},
+    {
+        "headerName": "...",
+        "field": "Menu",
+        "cellRenderer": "rowMenu",
+        "width": 100,
+    },
     {"headerName": "Bond", "field": "Bond", "editable": False, "width": 100},
     select_cell("Currency", ["USD", "EUR"]),
     numeric_cell("Coupon"),
@@ -45,19 +53,32 @@ column_defs = [
     numeric_cell("Frequency"),
     numeric_cell("Notional"),
     {"headerName": "Price", "field": "Price", "editable": False, "width": 100},
-    {"headerName": "Duration", "field": "Duration", "editable": False, "width": 100},
-    {"headerName": "Convexity", "field": "Convexity", "editable": False, "width": 100},
+    {
+        "headerName": "Duration",
+        "field": "Duration",
+        "editable": False,
+        "width": 100,
+    },
+    {
+        "headerName": "Convexity",
+        "field": "Convexity",
+        "editable": False,
+        "width": 100,
+    },
 ]
 
 # Layout of the app
 app.layout = html.Div(
     [
         html.Button(
-            "Add Bond", id="add-bond-button", n_clicks=0, style={"margin-top": "20px"}
+            "Add Bond",
+            id="add-bond-button",
+            n_clicks=0,
+            style={"margin-top": "20px"},
         ),
         dcc.DatePickerSingle(
             id="pricing-datetime-picker",
-            date=DEFAULT_PRICING_DATE,  # Using the constant
+            date=DEFAULT_PRICING_DATE,
             display_format="YYYY-MM-DD",
             style={"margin-top": "20px"},
         ),
@@ -69,7 +90,7 @@ app.layout = html.Div(
         ),
         AgGrid(
             id="bond-table",
-            rowData=generate_initial_data(DEFAULT_PRICING_DATE),  # Using the constant
+            rowData=generate_initial_data(DEFAULT_PRICING_DATE),
             columnDefs=column_defs,
             defaultColDef={
                 "sortable": True,
@@ -86,7 +107,7 @@ app.layout = html.Div(
         ),
         dcc.Store(
             id="bond-store", data=generate_initial_data(DEFAULT_PRICING_DATE)
-        ),  # Using the constant
+        ),
         dbc.Offcanvas(
             dcc.Markdown(id="timetable-content"),
             id="offcanvas-timetable",
@@ -98,13 +119,10 @@ app.layout = html.Div(
         dbc.Offcanvas(
             html.Div(
                 [
+                    dcc.Graph(id="rate-graph"),
                     AgGrid(
                         id="rate-editor",
-                        rowData=[
-                            {"Year": 1.0, "Rate": 5.0},
-                            {"Year": 2.0, "Rate": 4.5},
-                            {"Year": 5.0, "Rate": 4.0},
-                        ],
+                        rowData=DEFAULT_RATE_DATA,
                         columnDefs=[
                             numeric_cell("Year", editable=False),
                             numeric_cell("Rate"),
@@ -120,9 +138,8 @@ app.layout = html.Div(
                             "rowSelection": "single",
                             "animateRows": True,
                         },
-                        style={"height": "20vh", "width": "100%"},
+                        style={"flex": 1, "width": "100%"},
                     ),
-                    dcc.Graph(id="rate-graph"),
                 ]
             ),
             id="offcanvas-rate-editor",
@@ -130,13 +147,13 @@ app.layout = html.Div(
             is_open=False,
             placement="end",
             backdrop=True,
-            style={"width": "30%"},  # Adjust the width of the off-canvas here
+            style={"width": "30%"},
         ),
     ]
 )
 
 
-# Combined callback to handle bond updates, additions, and deletions
+# Callback to update the bond store data
 @app.callback(
     Output("bond-store", "data"),
     [
@@ -149,12 +166,7 @@ app.layout = html.Div(
     State("bond-store", "data"),
 )
 def update_bond_data(
-    n_clicks_add,
-    cell_change,
-    menu_data,
-    _rate_change,
-    pricing_datetime,
-    data,
+    n_clicks_add, cell_change, menu_data, _rate_change, pricing_datetime, data
 ):
     ctx = callback_context
 
@@ -167,7 +179,8 @@ def update_bond_data(
     if trigger == "add-bond-button.n_clicks" and n_clicks_add > 0:
         new_index = len(data) + 1
         new_bond = create_default_bond(
-            index=new_index, pricing_datetime=datetime.fromisoformat(pricing_datetime)
+            index=new_index,
+            pricing_datetime=datetime.fromisoformat(pricing_datetime),
         )
         data.append(new_bond)
 
@@ -190,6 +203,7 @@ def update_bond_data(
                     data[row_id]["Price"] = (
                         None  # Set Price to None to trigger recalculation
                     )
+
     elif trigger == "rate-editor.cellValueChanged":
         # Invalidate all prices when the rate data is updated
         for bond in data:
@@ -198,7 +212,7 @@ def update_bond_data(
     return data
 
 
-# Callback to update the grid data, when the bond data is updated
+# Callback to update the bond table data
 @app.callback(
     Output("bond-table", "rowData"),
     Input("bond-store", "data"),
@@ -206,13 +220,24 @@ def update_bond_data(
     State("rate-editor", "rowData"),
 )
 def update_table(data, pricing_datetime, rate_data):
-    # Update the prices of the bonds that need to be recalculated
     update_price(
         data,
         rate_data=rate_data,
         pricing_datetime=datetime.fromisoformat(pricing_datetime),
     )
     return data
+
+
+# Callback to update the rate editor data dynamically based on the selected pricing date
+@app.callback(
+    Output("rate-editor", "rowData"),
+    Input("pricing-datetime-picker", "date"),
+)
+def update_rate_editor_data(pricing_datetime):
+    if pricing_datetime is None:
+        pricing_datetime = DEFAULT_PRICING_DATE
+    rate_data = get_rates_for_date(pricing_datetime)
+    return rate_data
 
 
 # Callback to update the rate graph instantly when rates are edited
@@ -228,7 +253,10 @@ def update_rate_graph(_rate_change, rate_data):
 
 # Callback to show timetable in the off-canvas
 @app.callback(
-    [Output("timetable-content", "children"), Output("offcanvas-timetable", "is_open")],
+    [
+        Output("timetable-content", "children"),
+        Output("offcanvas-timetable", "is_open"),
+    ],
     Input("bond-table", "cellRendererData"),
     State("bond-store", "data"),
 )
@@ -237,7 +265,6 @@ def show_timetable(menu_data, data):
         row_index = menu_data.get("rowIndex", -1)
         if row_index >= 0 and row_index < len(data):
             bond_obj, _ = bond_dict_to_obj(data[row_index])
-
             full_text = f"```\n{bond_obj.to_string()}\n```"
             return full_text, True
 

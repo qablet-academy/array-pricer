@@ -54,7 +54,9 @@ def update_price(data, rate_data, pricing_datetime):
 
         # 2. Calculate price with shocks
         price_up = price_shocked(model, timetable, dataset, shock=shock_size)
-        price_down = price_shocked(model, timetable, dataset, shock=-shock_size)
+        price_down = price_shocked(
+            model, timetable, dataset, shock=-shock_size
+        )
         dv = (price_up - price_down) / (2 * shock_size)
 
         # Calculate duration
