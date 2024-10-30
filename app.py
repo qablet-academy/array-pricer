@@ -10,23 +10,11 @@ from src.bond import bond_dict_to_obj, create_default_bond
 from src.price import update_price
 from src.rates import get_rates_for_date, plot_rates, rates_table
 
-# Constant for default pricing date and default rate data
+# Constant for default pricing date
 DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
-DEFAULT_RATE_DATA = [
-    {"Year": 1 / 12, "Rate": 5.55},
-    {"Year": 2 / 12, "Rate": 5.54},
-    {"Year": 3 / 12, "Rate": 5.46},
-    {"Year": 4 / 12, "Rate": 5.41},
-    {"Year": 6 / 12, "Rate": 5.24},
-    {"Year": 1, "Rate": 4.80},
-    {"Year": 2, "Rate": 4.33},
-    {"Year": 3, "Rate": 4.09},
-    {"Year": 5, "Rate": 3.93},
-    {"Year": 7, "Rate": 3.95},
-    {"Year": 10, "Rate": 3.95},
-    {"Year": 20, "Rate": 4.25},
-    {"Year": 30, "Rate": 4.08},
-]
+
+# Fetch default rate data dynamically for the default pricing date
+DEFAULT_RATE_DATA = get_rates_for_date(DEFAULT_PRICING_DATE)
 
 # Initialize the Dash app
 app = dash.Dash(
