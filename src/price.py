@@ -1,10 +1,26 @@
 import copy
-
 import numpy as np
+from datetime import datetime
 from qablet.base.fixed import FixedModel
 from qablet_contracts.timetable import py_to_ts
-
 from src.bond import bond_dict_to_obj
+
+# Define the set of time points for Key Rate Duration (KRD) calculation (Months and Years)
+DEFAULT_RATES_YEARS_MONTHS = [
+    {"Year": 1 / 12, "Label": "1 Mo"},
+    {"Year": 2 / 12, "Label": "2 Mo"},
+    {"Year": 3 / 12, "Label": "3 Mo"},
+    {"Year": 4 / 12, "Label": "4 Mo"},
+    {"Year": 6 / 12, "Label": "6 Mo"},
+    {"Year": 1, "Label": "1 Yr"},
+    {"Year": 2, "Label": "2 Yr"},
+    {"Year": 3, "Label": "3 Yr"},
+    {"Year": 5, "Label": "5 Yr"},
+    {"Year": 7, "Label": "7 Yr"},
+    {"Year": 10, "Label": "10 Yr"},
+    {"Year": 20, "Label": "20 Yr"},
+    {"Year": 30, "Label": "30 Yr"},
+]
 
 
 def price_shocked(model, timetable, dataset_orig, shock):
@@ -12,9 +28,7 @@ def price_shocked(model, timetable, dataset_orig, shock):
     zero_rates = dataset["ASSETS"]["USD"][1]
     zero_rates[:, 1] = zero_rates[:, 1] + shock
     dataset["ASSETS"]["USD"] = ("ZERO_RATES", zero_rates)
-
     price, _ = model.price(timetable, dataset)
-
     return price
 
 
@@ -65,3 +79,68 @@ def update_price(data, rate_data, pricing_datetime):
         # Calculate convexity
         convexity = (price_up + price_down - 2 * price) / (shock_size**2)
         bond["Convexity"] = f"{convexity:.6f}"
+
+
+def calculate_key_rate_duration(data, rate_data, pricing_datetime):
+    """
+    Calculate Key Rate Duration (KRD) for each bond in the data.
+    Shocks each maturity rate in DEFAULT_RATES_YEARS_MONTHS by 1%.
+    """
+    model = FixedModel()
+    krd_report = []
+
+    for bond in data:
+        bond_obj, notional = bond_dict_to_obj(bond)
+        timetable = bond_obj.timetable()
+
+        # Calculate the bond's maturity in years from accrual start to maturity date
+        maturity_years = (
+            bond_obj.maturity - bond_obj.accrual_start
+        ).days / 365
+        bond_krd = {
+            "Bond": bond["Bond"],
+            "Maturity (Years)": round(maturity_years, 2),
+        }
+
+        # Initial dataset and price calculation
+        initial_dataset = {
+            "BASE": "USD",
+            "PRICING_TS": py_to_ts(pricing_datetime).value,
+            "ASSETS": {
+                "USD": (
+                    "ZERO_RATES",
+                    np.array(
+                        [
+                            [rate["Year"], rate["Rate"] / 100]
+                            for rate in rate_data
+                        ]
+                    ),
+                ),
+            },
+        }
+        initial_price, _ = model.price(timetable, initial_dataset)
+
+        # Calculate KRD by shocking each rate point
+        for rate in DEFAULT_RATES_YEARS_MONTHS:
+            rate_year = rate["Year"]
+            rate_label = rate["Label"]
+
+            # Only calculate for rates up to the bond's maturity
+            if rate_year > maturity_years:
+                bond_krd[rate_label] = None
+                continue
+
+            # Shock the rate
+            shocked_dataset = copy.deepcopy(initial_dataset)
+            for i, r in enumerate(shocked_dataset["ASSETS"]["USD"][1]):
+                if r[0] == rate_year:
+                    shocked_dataset["ASSETS"]["USD"][1][i][1] += 0.01
+
+            # Calculate shocked price and KRD
+            shocked_price, _ = model.price(timetable, shocked_dataset)
+            krd_value = (initial_price - shocked_price) * notional
+            bond_krd[rate_label] = round(krd_value, 6)
+
+        krd_report.append(bond_krd)
+
+    return krd_report

@@ -9,7 +9,7 @@ from dash_ag_grid import AgGrid
 
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
-from src.price import update_price
+from src.price import update_price, calculate_key_rate_duration
 from src.rates import get_rates_for_date, plot_rates, rates_table
 
 # Constant for default pricing date
@@ -88,6 +88,12 @@ app.layout = html.Div(
             n_clicks=0,
             style={"margin-top": "20px"},
         ),
+        html.Button(
+            "Show Key Rate Duration",
+            id="show-krd-button",
+            n_clicks=0,
+            style={"margin-top": "20px"},
+        ),
         AgGrid(
             id="bond-table",
             rowData=generate_initial_data(DEFAULT_PRICING_DATE),
@@ -148,6 +154,24 @@ app.layout = html.Div(
             placement="end",
             backdrop=True,
             style={"width": "30%"},
+        ),
+        dbc.Offcanvas(
+            AgGrid(
+                id="krd-report-table",
+                columnDefs=[{"headerName": "Bond", "field": "Bond"}] + [
+                    {"headerName": label, "field": label, "editable": False}
+                    for label in ["Maturity (Years)", "1 Mo", "2 Mo", "3 Mo", "4 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
+                ],
+                dashGridOptions={"suppressMovableColumns": True},
+                defaultColDef={"sortable": True, "filter": True, "resizable": True},
+                style={"height": "60vh", "width": "100%"},
+            ),
+            id="offcanvas-krd-report",
+            title="Key Rate Duration Report",
+            is_open=False,
+            placement="end",
+            backdrop=True,
+            style={"width": "80%"},
         ),
     ]
 )
@@ -281,6 +305,24 @@ def toggle_rate_editor(n_clicks, is_open):
     if n_clicks:
         return not is_open
     return is_open
+
+
+# Callback to handle Key Rate Duration Report Off-canvas
+@app.callback(
+    [Output("krd-report-table", "rowData"), Output("offcanvas-krd-report", "is_open")],
+    Input("show-krd-button", "n_clicks"),
+    State("bond-store", "data"),
+    State("rate-editor", "rowData"),
+    State("pricing-datetime-picker", "date"),
+)
+def show_krd_report(n_clicks, data, rate_data, pricing_datetime):
+    if n_clicks == 0:
+        return [], False
+
+    krd_data = calculate_key_rate_duration(
+        data, rate_data, datetime.fromisoformat(pricing_datetime)
+    )
+    return krd_data, True
 
 
 if __name__ == "__main__":
