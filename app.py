@@ -163,7 +163,7 @@ app.layout = html.Div(
                     for label in ["Maturity (Years)", "1 Mo", "2 Mo", "3 Mo", "4 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
                 ],
                 dashGridOptions={"suppressMovableColumns": True},
-                defaultColDef={"sortable": True, "filter": True, "resizable": True},
+                defaultColDef={"sortable": True, "filter": True, "resizable": True,"width": 88},
                 style={"height": "60vh", "width": "100%"},
             ),
             id="offcanvas-krd-report",
