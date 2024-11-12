@@ -1,6 +1,5 @@
 import copy
 import numpy as np
-from datetime import datetime
 from qablet.base.fixed import FixedModel
 from qablet_contracts.timetable import py_to_ts
 from src.bond import bond_dict_to_obj
