@@ -21,7 +21,6 @@ DEFAULT_RATES_YEARS_MONTHS = [
     {"Year": 30, "Label": "30 Yr"},
 ]
 
-
 def price_shocked(model, timetable, dataset_orig, shock):
     dataset = copy.deepcopy(dataset_orig)
     zero_rates = dataset["ASSETS"]["USD"][1]
@@ -29,7 +28,6 @@ def price_shocked(model, timetable, dataset_orig, shock):
     dataset["ASSETS"]["USD"] = ("ZERO_RATES", zero_rates)
     price, _ = model.price(timetable, dataset)
     return price
-
 
 def update_price(data, rate_data, pricing_datetime):
     """Update missing prices and calculate duration/convexity for all bonds in the table, in place."""
@@ -67,9 +65,7 @@ def update_price(data, rate_data, pricing_datetime):
 
         # 2. Calculate price with shocks
         price_up = price_shocked(model, timetable, dataset, shock=shock_size)
-        price_down = price_shocked(
-            model, timetable, dataset, shock=-shock_size
-        )
+        price_down = price_shocked(model, timetable, dataset, shock=-shock_size)
         dv = (price_up - price_down) / (2 * shock_size)
 
         # Calculate duration
@@ -78,7 +74,6 @@ def update_price(data, rate_data, pricing_datetime):
         # Calculate convexity
         convexity = (price_up + price_down - 2 * price) / (shock_size**2)
         bond["Convexity"] = f"{convexity:.6f}"
-
 
 def calculate_key_rate_duration(data, rate_data, pricing_datetime):
     """
@@ -93,9 +88,7 @@ def calculate_key_rate_duration(data, rate_data, pricing_datetime):
         timetable = bond_obj.timetable()
 
         # Calculate the bond's maturity in years from accrual start to maturity date
-        maturity_years = (
-            bond_obj.maturity - bond_obj.accrual_start
-        ).days / 365
+        maturity_years = (bond_obj.maturity - bond_obj.accrual_start).days / 365
         bond_krd = {
             "Bond": bond["Bond"],
             "Maturity (Years)": round(maturity_years, 2),
@@ -108,26 +101,25 @@ def calculate_key_rate_duration(data, rate_data, pricing_datetime):
             "ASSETS": {
                 "USD": (
                     "ZERO_RATES",
-                    np.array(
-                        [
-                            [rate["Year"], rate["Rate"] / 100]
-                            for rate in rate_data
-                        ]
-                    ),
+                    np.array([[rate["Year"], rate["Rate"] / 100] for rate in rate_data]),
                 ),
             },
         }
         initial_price, _ = model.price(timetable, initial_dataset)
 
         # Calculate KRD by shocking each rate point
+        additional_point_included = False
         for rate in DEFAULT_RATES_YEARS_MONTHS:
             rate_year = rate["Year"]
             rate_label = rate["Label"]
 
-            # Only calculate for rates up to the bond's maturity
+            # Include one additional rate point if it is the next maturity beyond bond maturity
             if rate_year > maturity_years:
-                bond_krd[rate_label] = None
-                continue
+                if not additional_point_included:
+                    additional_point_included = True
+                else:
+                    bond_krd[rate_label] = None
+                    continue
 
             # Shock the rate
             shocked_dataset = copy.deepcopy(initial_dataset)
