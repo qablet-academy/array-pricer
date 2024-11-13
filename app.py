@@ -1,6 +1,5 @@
 from datetime import datetime
 from enum import Enum
-
 import dash
 import dash_bootstrap_components as dbc
 from dash import callback_context, dcc, html
@@ -25,17 +24,14 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
-
 # Enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
-
 # Function to generate initial bond data
 def generate_initial_data(pricing_datetime):
     return [create_default_bond(index=1, pricing_datetime=pricing_datetime)]
-
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -159,7 +155,28 @@ app.layout = html.Div(
             AgGrid(
                 id="krd-report-table",
                 columnDefs=[{"headerName": "Bond", "field": "Bond"}] + [
-                    {"headerName": label, "field": label, "editable": False}
+                    {
+                        "headerName": label,
+                        "field": label,
+                        "editable": False,
+                        "cellStyle": {
+                            "styleConditions": [
+                                {
+                                    "condition": "params.value === null",
+                                    "style": {"backgroundColor": "white"},
+                                },
+                                {
+                                    "condition": "params.value > 0",
+                                    "style": {"backgroundColor": "rgba(0, 128, 0, 0.3)"},
+                                },
+                                {
+                                    "condition": "params.value < 0",
+                                    "style": {"backgroundColor": "rgba(255, 0, 0, 0.3)"},
+                                },
+                            ],
+                            "defaultStyle": {"backgroundColor": "white"}
+                        }
+                    }
                     for label in ["Maturity (Years)", "1 Mo", "2 Mo", "3 Mo", "4 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
                 ],
                 dashGridOptions={"suppressMovableColumns": True},
