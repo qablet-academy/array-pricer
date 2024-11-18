@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import Enum
+
 import dash
 import dash_bootstrap_components as dbc
 from dash import callback_context, dcc, html
@@ -8,14 +9,38 @@ from dash_ag_grid import AgGrid
 
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
-from src.price import update_price, calculate_key_rate_duration
-from src.rates import get_rates_for_date, plot_rates, rates_table
+from src.price import calculate_key_rate_duration, update_price
+from src.rates import (
+    RATE_TENOR_LABELS,
+    get_rates_for_date,
+    plot_rates,
+    rates_table,
+)
 
 # Constant for default pricing date
 DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
 
 # Fetch default rate data dynamically for the default pricing date
 DEFAULT_RATE_DATA = get_rates_for_date(DEFAULT_PRICING_DATE)
+
+HEATMAP_STYLE = {
+    "styleConditions": [
+        {
+            "condition": "params.value === null",
+            "style": {"backgroundColor": "white"},
+        },
+        {
+            "condition": "params.value > 0",
+            "style": {"backgroundColor": "rgba(0, 128, 0, 0.3)"},
+        },
+        {
+            "condition": "params.value < 0",
+            "style": {"backgroundColor": "rgba(255, 0, 0, 0.3)"},
+        },
+    ],
+    "defaultStyle": {"backgroundColor": "white"},
+}
+
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -24,14 +49,17 @@ app = dash.Dash(
     suppress_callback_exceptions=True,
 )
 
+
 # Enum for menu actions
 class MenuAction(Enum):
     DELETE = 1
     SHOW_TIMETABLE = 2
 
+
 # Function to generate initial bond data
 def generate_initial_data(pricing_datetime):
     return [create_default_bond(index=1, pricing_datetime=pricing_datetime)]
+
 
 # Column definitions for AG Grid with the row menu column
 column_defs = [
@@ -154,33 +182,29 @@ app.layout = html.Div(
         dbc.Offcanvas(
             AgGrid(
                 id="krd-report-table",
-                columnDefs=[{"headerName": "Bond", "field": "Bond"}] + [
+                columnDefs=[
+                    {"headerName": "Bond", "field": "Bond"},
+                    {
+                        "headerName": "Maturity (Years)",
+                        "field": "Maturity (Years)",
+                    },
+                ]
+                + [
                     {
                         "headerName": label,
                         "field": label,
                         "editable": False,
-                        "cellStyle": {
-                            "styleConditions": [
-                                {
-                                    "condition": "params.value === null",
-                                    "style": {"backgroundColor": "white"},
-                                },
-                                {
-                                    "condition": "params.value > 0",
-                                    "style": {"backgroundColor": "rgba(0, 128, 0, 0.3)"},
-                                },
-                                {
-                                    "condition": "params.value < 0",
-                                    "style": {"backgroundColor": "rgba(255, 0, 0, 0.3)"},
-                                },
-                            ],
-                            "defaultStyle": {"backgroundColor": "white"}
-                        }
+                        "cellStyle": HEATMAP_STYLE,
                     }
-                    for label in ["Maturity (Years)", "1 Mo", "2 Mo", "3 Mo", "4 Mo", "6 Mo", "1 Yr", "2 Yr", "3 Yr", "5 Yr", "7 Yr", "10 Yr", "20 Yr", "30 Yr"]
+                    for label in RATE_TENOR_LABELS
                 ],
                 dashGridOptions={"suppressMovableColumns": True},
-                defaultColDef={"sortable": True, "filter": True, "resizable": True,"width": 88},
+                defaultColDef={
+                    "sortable": True,
+                    "filter": True,
+                    "resizable": True,
+                    "width": 88,
+                },
                 style={"height": "60vh", "width": "100%"},
             ),
             id="offcanvas-krd-report",
@@ -326,7 +350,10 @@ def toggle_rate_editor(n_clicks, is_open):
 
 # Callback to handle Key Rate Duration Report Off-canvas
 @app.callback(
-    [Output("krd-report-table", "rowData"), Output("offcanvas-krd-report", "is_open")],
+    [
+        Output("krd-report-table", "rowData"),
+        Output("offcanvas-krd-report", "is_open"),
+    ],
     Input("show-krd-button", "n_clicks"),
     State("bond-store", "data"),
     State("rate-editor", "rowData"),

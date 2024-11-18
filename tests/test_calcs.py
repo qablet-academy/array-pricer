@@ -1,6 +1,9 @@
-import pytest
 from datetime import datetime
+
+import pytest
+
 from src.price import calculate_key_rate_duration
+
 
 # Sample bond data and rate data
 @pytest.fixture
@@ -16,6 +19,7 @@ def bond_data_example():
             "Notional": 1000000,
         }
     ]
+
 
 @pytest.fixture
 def rate_data_example():
@@ -35,12 +39,15 @@ def rate_data_example():
         {"Year": 30, "Rate": 4.08},
     ]
 
+
 def test_calculate_key_rate_duration(bond_data_example, rate_data_example):
     # Set the pricing date
     pricing_datetime = datetime(2024, 1, 2)
 
     # Call the calculate_key_rate_duration function
-    krd_result = calculate_key_rate_duration(bond_data_example, rate_data_example, pricing_datetime)
+    krd_result = calculate_key_rate_duration(
+        bond_data_example, rate_data_example, pricing_datetime
+    )
 
     # Check that the result is not empty and contains the expected structure
     assert len(krd_result) == 1
