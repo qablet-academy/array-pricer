@@ -9,14 +9,38 @@ from dash_ag_grid import AgGrid
 
 from src.aggrid_utils import datestring_cell, numeric_cell, select_cell
 from src.bond import bond_dict_to_obj, create_default_bond
-from src.price import update_price
-from src.rates import get_rates_for_date, plot_rates, rates_table
+from src.price import calculate_key_rate_duration, update_price
+from src.rates import (
+    RATE_TENOR_LABELS,
+    get_rates_for_date,
+    plot_rates,
+    rates_table,
+)
 
 # Constant for default pricing date
 DEFAULT_PRICING_DATE = datetime(2024, 1, 2)
 
 # Fetch default rate data dynamically for the default pricing date
 DEFAULT_RATE_DATA = get_rates_for_date(DEFAULT_PRICING_DATE)
+
+HEATMAP_STYLE = {
+    "styleConditions": [
+        {
+            "condition": "params.value === null",
+            "style": {"backgroundColor": "white"},
+        },
+        {
+            "condition": "params.value > 0",
+            "style": {"backgroundColor": "rgba(0, 128, 0, 0.3)"},
+        },
+        {
+            "condition": "params.value < 0",
+            "style": {"backgroundColor": "rgba(255, 0, 0, 0.3)"},
+        },
+    ],
+    "defaultStyle": {"backgroundColor": "white"},
+}
+
 
 # Initialize the Dash app
 app = dash.Dash(
@@ -88,6 +112,12 @@ app.layout = html.Div(
             n_clicks=0,
             style={"margin-top": "20px"},
         ),
+        html.Button(
+            "Show Key Rate Duration",
+            id="show-krd-button",
+            n_clicks=0,
+            style={"margin-top": "20px"},
+        ),
         AgGrid(
             id="bond-table",
             rowData=generate_initial_data(DEFAULT_PRICING_DATE),
@@ -148,6 +178,41 @@ app.layout = html.Div(
             placement="end",
             backdrop=True,
             style={"width": "30%"},
+        ),
+        dbc.Offcanvas(
+            AgGrid(
+                id="krd-report-table",
+                columnDefs=[
+                    {"headerName": "Bond", "field": "Bond"},
+                    {
+                        "headerName": "Maturity (Years)",
+                        "field": "Maturity (Years)",
+                    },
+                ]
+                + [
+                    {
+                        "headerName": label,
+                        "field": label,
+                        "editable": False,
+                        "cellStyle": HEATMAP_STYLE,
+                    }
+                    for label in RATE_TENOR_LABELS
+                ],
+                dashGridOptions={"suppressMovableColumns": True},
+                defaultColDef={
+                    "sortable": True,
+                    "filter": True,
+                    "resizable": True,
+                    "width": 88,
+                },
+                style={"height": "60vh", "width": "100%"},
+            ),
+            id="offcanvas-krd-report",
+            title="Key Rate Duration Report",
+            is_open=False,
+            placement="end",
+            backdrop=True,
+            style={"width": "80%"},
         ),
     ]
 )
@@ -281,6 +346,27 @@ def toggle_rate_editor(n_clicks, is_open):
     if n_clicks:
         return not is_open
     return is_open
+
+
+# Callback to handle Key Rate Duration Report Off-canvas
+@app.callback(
+    [
+        Output("krd-report-table", "rowData"),
+        Output("offcanvas-krd-report", "is_open"),
+    ],
+    Input("show-krd-button", "n_clicks"),
+    State("bond-store", "data"),
+    State("rate-editor", "rowData"),
+    State("pricing-datetime-picker", "date"),
+)
+def show_krd_report(n_clicks, data, rate_data, pricing_datetime):
+    if n_clicks == 0:
+        return [], False
+
+    krd_data = calculate_key_rate_duration(
+        data, rate_data, datetime.fromisoformat(pricing_datetime)
+    )
+    return krd_data, True
 
 
 if __name__ == "__main__":

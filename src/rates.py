@@ -8,6 +8,25 @@ from qablet.base.utils import Discounter
 # CSV URL for fetching Treasury rates
 CSV_URL = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/daily-treasury-rates.csv/2024/all?type=daily_treasury_yield_curve&field_tdr_date_value=2024&page&_format=csv"
 
+# Define the set of time points for Key Rate Duration (KRD) calculation (Months and Years)
+RATE_TENOR_MAP = [
+    {"Year": 1 / 12, "Label": "1 Mo"},
+    {"Year": 2 / 12, "Label": "2 Mo"},
+    {"Year": 3 / 12, "Label": "3 Mo"},
+    {"Year": 4 / 12, "Label": "4 Mo"},
+    {"Year": 6 / 12, "Label": "6 Mo"},
+    {"Year": 1, "Label": "1 Yr"},
+    {"Year": 2, "Label": "2 Yr"},
+    {"Year": 3, "Label": "3 Yr"},
+    {"Year": 5, "Label": "5 Yr"},
+    {"Year": 7, "Label": "7 Yr"},
+    {"Year": 10, "Label": "10 Yr"},
+    {"Year": 20, "Label": "20 Yr"},
+    {"Year": 30, "Label": "30 Yr"},
+]
+
+RATE_TENOR_LABELS = [x["Label"] for x in RATE_TENOR_MAP]
+
 
 # Function to fetch Treasury rates from the Treasury website
 def fetch_treasury_rates():
@@ -33,19 +52,8 @@ def get_rates_for_date(pricing_datetime):
 # Function to format Treasury yield curve data for the app's rate editor
 def treasury_rates_to_rate_data(df_row):
     return [
-        {"Year": 1 / 12, "Rate": df_row["1 Mo"].values[0]},
-        {"Year": 2 / 12, "Rate": df_row["2 Mo"].values[0]},
-        {"Year": 3 / 12, "Rate": df_row["3 Mo"].values[0]},
-        {"Year": 4 / 12, "Rate": df_row["4 Mo"].values[0]},
-        {"Year": 6 / 12, "Rate": df_row["6 Mo"].values[0]},
-        {"Year": 1.0, "Rate": df_row["1 Yr"].values[0]},
-        {"Year": 2.0, "Rate": df_row["2 Yr"].values[0]},
-        {"Year": 3.0, "Rate": df_row["3 Yr"].values[0]},
-        {"Year": 5.0, "Rate": df_row["5 Yr"].values[0]},
-        {"Year": 7.0, "Rate": df_row["7 Yr"].values[0]},
-        {"Year": 10.0, "Rate": df_row["10 Yr"].values[0]},
-        {"Year": 20.0, "Rate": df_row["20 Yr"].values[0]},
-        {"Year": 30.0, "Rate": df_row["30 Yr"].values[0]},
+        {"Year": x["Year"], "Rate": df_row[x["Label"]].values[0]}
+        for x in RATE_TENOR_MAP
     ]
 
 
